@@ -50,3 +50,4 @@ RUN mkdir -p /build \
     && sed -ri "s|#auth_plugin.*?|auth_plugin /usr/local/lib/auth-plug.so\nauth_opt_backends http\n|" /etc/mosquitto/mosquitto.conf
 
 ADD entrypoint-mosquitto.sh /entrypoint-mosquitto.sh
+RUN chmod u+x /entrypoint-mosquitto.sh
