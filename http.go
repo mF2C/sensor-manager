@@ -60,7 +60,7 @@ func startBlockingHttpServer(authDb AuthDatabase, port uint16) {
 	http.HandleFunc("/acl", func(writer http.ResponseWriter, request *http.Request) {
 		authParams := getParamsFromRequest(request)
 		// no one is authorized to write to topics
-		if authParams.AccessType == AccessTypeSubscribe && authDb.isAuthorized(authParams.Username, authParams.Password, authParams.Topic) {
+		if authParams.AccessType == AccessTypeSubscribe && authDb.isAuthorized(authParams.Username, authParams.Topic) {
 			writer.WriteHeader(200)
 		} else {
 			writer.WriteHeader(403)

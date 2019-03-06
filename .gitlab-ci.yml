@@ -76,7 +76,7 @@ docker-image-x86_64-mosquitto:
   image: docker:stable
   script:
     - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN $CI_REGISTRY
-    - docker build -t $MOSQUITTO_IMAGE:latest-x86_64 --cache-from $MOSQUITTO_IMAGE:latest-x86_64 -f Dockerfile-sensor-manager .
+    - docker build -t $MOSQUITTO_IMAGE:latest-x86_64 --cache-from $MOSQUITTO_IMAGE:latest-x86_64 -f Dockerfile-mqtt-auth .
     - docker push $MOSQUITTO_IMAGE:latest-x86_64
   variables:
     DOCKER_HOST: tcp://docker:2375/
@@ -90,7 +90,7 @@ docker-image-armhf-mosquitto:
   image: docker:stable
   script:
     - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN $CI_REGISTRY
-    - docker build -t $MOSQUITTO_IMAGE:latest-armhf --cache-from $MOSQUITTO_IMAGE:latest-armhf -f Dockerfile-sensor-manager .
+    - docker build -t $MOSQUITTO_IMAGE:latest-armhf --cache-from $MOSQUITTO_IMAGE:latest-armhf -f Dockerfile-mqtt-auth .
     - docker push $MOSQUITTO_IMAGE:latest-armhf
   variables:
     DOCKER_HOST: tcp://docker:2375/
