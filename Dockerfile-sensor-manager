@@ -1,0 +1,3 @@
+FROM alpine:3.9
+ENTRYPOINT ["/app/mf2c-sensor-manager"]
+COPY mf2c-sensor-manager /app/mf2c-sensor-manager

@@ -44,9 +44,10 @@ func loadOrCreateAuthDatabase(filename string) AuthDatabase {
 	log.Printf("Auth database file %s read successfully.", filename)
 	unmarshaled := AuthDatabase{}
 	if json.Unmarshal(contents, &unmarshaled) != nil {
-		log.Println(fmt.Errorf("failed to unmarshal database"))
-		log.Println(err)
+		log.Println(fmt.Errorf("failed to unmarshal database, panic"))
+		panic(err)
 	}
+	return unmarshaled
 }
 
 func buildTopicFromSensorId(unsafe string) string {

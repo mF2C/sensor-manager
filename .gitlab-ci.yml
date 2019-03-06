@@ -1,0 +1,95 @@
+variables:
+  GIT_SUBMODULE_STRATEGY: normal
+
+stages:
+  - compile
+  # not referenced from upstream here to make this standalone on github
+  - container
+  - publish
+
+job-compile-x86_64:
+  stage: compile
+  image: golang:1.12.0-alpine3.9
+  script:
+    - apk add git
+    - go build -o mf2c-sensor-manager mf2c-sensor-manager
+  artifacts:
+    name: "$CI_PROJECT_NAME-$CI_COMMIT_SHORT_SHA-x86_64"
+    paths:
+      - mf2c-sensor-manager
+  variables:
+    GOARCH: amd64
+    GOOS: linux
+
+job-compile-armhf:
+  stage: compile
+  image: golang:1.12.0-alpine3.9
+  script:
+    - apk add git
+    - go build -o mf2c-sensor-manager mf2c-sensor-manager
+  artifacts:
+    name: "$CI_PROJECT_NAME-$CI_COMMIT_SHORT_SHA-armhf"
+    paths:
+      - mf2c-sensor-manager
+  variables:
+    GOARCH: arm
+    GOOS: linux
+    GOARM: 7
+  tags:
+    - armv7l
+
+docker-image-x86_64:
+  stage: container
+  image: docker:stable
+  script:
+    - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN $CI_REGISTRY
+    - docker build -t $CI_REGISTRY_IMAGE:latest-x86_64 --cache-from $CI_REGISTRY_IMAGE:latest-x86_64 .
+    - docker push $CI_REGISTRY_IMAGE:latest-x86_64
+  variables:
+    DOCKER_HOST: tcp://docker:2375/
+  services:
+    - docker:stable-dind
+  only:
+    - /^master$/
+  dependencies:
+    - job-compile-x86_64
+
+docker-image-armhf:
+  stage: container
+  image: docker:stable
+  script:
+    - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN $CI_REGISTRY
+    - docker build -t $CI_REGISTRY_IMAGE:latest-armhf --cache-from $CI_REGISTRY_IMAGE:latest-armhf .
+    - docker push $CI_REGISTRY_IMAGE:latest-armhf
+  variables:
+    DOCKER_HOST: tcp://docker:2375/
+  services:
+    - docker:stable-dind
+  only:
+    - /^master$/
+  tags:
+    - armv7l
+  dependencies:
+    - job-compile-armhf
+
+publish-crossplatform:
+  stage: publish
+  image: docker:stable
+  script:
+    - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN $CI_REGISTRY
+    # enable experimental features for the manifest
+    - apk add jq
+    - "jq '. + {experimental: \"enabled\"}' ~/.docker/config.json > ~/.docker/config.json.temp"
+    - mv ~/.docker/config.json.temp ~/.docker/config.json
+    # create a list (manifest) of all images
+    - docker manifest create $CI_REGISTRY_IMAGE:latest $CI_REGISTRY_IMAGE:latest-x86_64 $CI_REGISTRY_IMAGE:latest-armhf
+    - docker manifest annotate $CI_REGISTRY_IMAGE:latest $CI_REGISTRY_IMAGE:latest-x86_64 --arch amd64
+    - docker manifest annotate $CI_REGISTRY_IMAGE:latest $CI_REGISTRY_IMAGE:latest-armhf --arch arm
+    # push all the images together
+    - docker manifest push $CI_REGISTRY_IMAGE:latest
+  variables:
+    DOCKER_HOST: tcp://docker:2375/
+  services:
+    - docker:stable-dind
+  only:
+    - /^master$/
