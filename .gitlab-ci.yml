@@ -36,8 +36,6 @@ job-compile-armhf:
     GOARCH: arm
     GOOS: linux
     GOARM: 7
-  tags:
-    - armv7l
 
 docker-image-x86_64:
   stage: container
