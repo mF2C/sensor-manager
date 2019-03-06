@@ -1,0 +1,50 @@
+FROM alpine:3.9
+
+ARG MOSQUITTO_VERSION="1.5.8"
+ARG MOSQUITTO_AUTH_PLUGIN_VERSION="0.1.3"
+
+ENTRYPOINT ["/usr/local/sbin/mosquitto", "-c", "/etc/mosquitto/mosquitto.conf"]
+
+# build dependency | dependent | comment
+# --------------------------------------
+# c-ares-dev         mosquitto   WITH_SRV=yes, async DNS resolves
+# util-linux-dev     mosquitto   WITH_UUID=yes, uuid/uuid.h
+# libwebsockets      mosquitto   WITH_WEBSOCKETS=yes
+# openssl-dev        mosquitto   WITH_SSL=yes
+
+RUN mkdir -p /build \
+    && cd /build \
+    && apk add --virtual buildDependencies build-base curl-dev openssl-dev c-ares-dev libwebsockets-dev util-linux-dev \
+    && apk add --virtual runtimeDependencies curl libwebsockets libuuid \
+    && wget -O mosquitto.zip https://github.com/eclipse/mosquitto/archive/v${MOSQUITTO_VERSION}.zip \
+    && wget -O mosquitto-auth-plug.zip https://github.com/jpmens/mosquitto-auth-plug/archive/${MOSQUITTO_AUTH_PLUGIN_VERSION}.zip \
+    && unzip -q mosquitto.zip \
+    && unzip -q mosquitto-auth-plug.zip \
+    && cd mosquitto-${MOSQUITTO_VERSION} \
+        && make -j $(nproc) \
+            CFLAGS="-O3" \
+            WITH_SRV=yes \
+            WITH_UUID=yes \
+            WITH_WEBSOCKETS=yes \
+            WITH_SSL=yes \
+            WITH_DOCS=no \
+            install \
+        && cd /build \
+    && cd mosquitto-auth-plug-${MOSQUITTO_AUTH_PLUGIN_VERSION} \
+        && cp config.mk.in config.mk \
+        && sed -ri "s/BACKEND_(\w+).*?/BACKEND_\1 ?= no/g" config.mk \
+        && sed -ri "s/BACKEND_HTTP.*?/BACKEND_HTTP ?= yes/" config.mk \
+        && sed -ri "s|MOSQUITTO_SRC.*?|MOSQUITTO_SRC = /build/mosquitto-${MOSQUITTO_VERSION}/|" config.mk \
+        && sed -ri "s/CFG_CFLAGS.*?/CFG_CFLAGS = -O3/" config.mk \
+        && make -j $(nproc) \
+        && install -m755 auth-plug.so /usr/local/lib/ \
+        && cd /build \
+    && cd / \
+    && rm -rf /build \
+    && apk del buildDependencies \
+    && rm -rf /var/cache/apk/* \
+    && mv /etc/mosquitto/mosquitto.conf.example /etc/mosquitto/mosquitto.conf \
+    && mkdir -p /etc/mosquitto/mosquitto.conf.d/ \
+    && sed -ri "s/#user.*?/user root/" /etc/mosquitto/mosquitto.conf \
+    && sed -ri "s|#include_dir.*?|include_dir /etc/mosquitto/mosquitto.conf.d/|" /etc/mosquitto/mosquitto.conf \
+    && sed -ri "s|#auth_plugin.*?|auth_plugin /usr/local/lib/auth-plug.so\nauth_opt_backends http\n|" /etc/mosquitto/mosquitto.conf
