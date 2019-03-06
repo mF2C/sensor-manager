@@ -3,7 +3,7 @@ FROM alpine:3.9
 ARG MOSQUITTO_VERSION="1.5.8"
 ARG MOSQUITTO_AUTH_PLUGIN_VERSION="0.1.3"
 
-ENTRYPOINT ["/usr/local/sbin/mosquitto", "-c", "/etc/mosquitto/mosquitto.conf"]
+ENTRYPOINT ["/bin/sh", "-c", "/entrypoint-mosquitto.sh"]
 
 # build dependency | dependent | comment
 # --------------------------------------
@@ -48,3 +48,5 @@ RUN mkdir -p /build \
     && sed -ri "s/#user.*?/user root/" /etc/mosquitto/mosquitto.conf \
     && sed -ri "s|#include_dir.*?|include_dir /etc/mosquitto/mosquitto.conf.d/|" /etc/mosquitto/mosquitto.conf \
     && sed -ri "s|#auth_plugin.*?|auth_plugin /usr/local/lib/auth-plug.so\nauth_opt_backends http\n|" /etc/mosquitto/mosquitto.conf
+
+ADD entrypoint-mosquitto.sh /entrypoint-mosquitto.sh

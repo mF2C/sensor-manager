@@ -118,10 +118,11 @@ func (db AuthDatabase) isAuthenticated(username string, password string) bool {
 	return false
 }
 
-// if the (username, password, topic) tuple exists
-func (db AuthDatabase) isAuthorized(username string, password string, topic string) bool {
+// if the (username, topic) tuple exists
+// authentication with the password is done in isAuthenticated
+func (db AuthDatabase) isAuthorized(username string, topic string) bool {
 	for _, dbTopic := range db.Topics {
-		if dbTopic.Name == topic && dbTopic.Username == username && dbTopic.Password == password {
+		if dbTopic.Name == topic && dbTopic.Username == username {
 			return true
 		}
 	}

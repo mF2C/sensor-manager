@@ -1,0 +1,13 @@
+version: "3.5"
+services:
+  mosquitto:
+    image: registry-gitlab.xlab.si/mf2c/sensor-manager/mosquitto:latest
+    ports:
+      - 1883:1883
+    environment:
+      - "MOSQUITTO_AUTH_HTTP_HOST=sensor-manager"
+      - "MOSQUITTO_AUTH_HTTP_HOST=8080"
+  sensor-manager:
+    image: registry-gitlab.xlab.si/mf2c/sensor-manager:latest
+    ports:
+      - 8080:8080
