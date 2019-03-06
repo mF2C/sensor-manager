@@ -1,5 +1,6 @@
 variables:
   GIT_SUBMODULE_STRATEGY: normal
+  MOSQUITTO_IMAGE: $CI_REGISTER_IMAGE-mosquitto
 
 stages:
   - compile
@@ -43,7 +44,7 @@ docker-image-x86_64:
   image: docker:stable
   script:
     - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN $CI_REGISTRY
-    - docker build -t $CI_REGISTRY_IMAGE:latest-x86_64 --cache-from $CI_REGISTRY_IMAGE:latest-x86_64 .
+    - docker build -t $CI_REGISTRY_IMAGE:latest-x86_64 --cache-from $CI_REGISTRY_IMAGE:latest-x86_64 -f Dockerfile-sensor-manager .
     - docker push $CI_REGISTRY_IMAGE:latest-x86_64
   variables:
     DOCKER_HOST: tcp://docker:2375/
@@ -59,7 +60,7 @@ docker-image-armhf:
   image: docker:stable
   script:
     - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN $CI_REGISTRY
-    - docker build -t $CI_REGISTRY_IMAGE:latest-armhf --cache-from $CI_REGISTRY_IMAGE:latest-armhf .
+    - docker build -t $CI_REGISTRY_IMAGE:latest-armhf --cache-from $CI_REGISTRY_IMAGE:latest-armhf -f Dockerfile-sensor-manager .
     - docker push $CI_REGISTRY_IMAGE:latest-armhf
   variables:
     DOCKER_HOST: tcp://docker:2375/
@@ -71,6 +72,36 @@ docker-image-armhf:
     - armv7l
   dependencies:
     - job-compile-armhf
+
+docker-image-x86_64-mosquitto:
+  stage: container
+  image: docker:stable
+  script:
+    - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN $CI_REGISTRY
+    - docker build -t $MOSQUITTO_IMAGE:latest-x86_64 --cache-from $MOSQUITTO_IMAGE:latest-x86_64 -f Dockerfile-sensor-manager .
+    - docker push $CI_REGISTRY_IMAGE:latest-x86_64
+  variables:
+    DOCKER_HOST: tcp://docker:2375/
+  services:
+    - docker:stable-dind
+  only:
+    - /^master$/
+
+docker-image-armhf-mosquitto:
+  stage: container
+  image: docker:stable
+  script:
+    - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN $CI_REGISTRY
+    - docker build -t $MOSQUITTO_IMAGE:latest-armhf --cache-from $MOSQUITTO_IMAGE:latest-armhf -f Dockerfile-sensor-manager .
+    - docker push $MOSQUITTO_IMAGE:latest-armhf
+  variables:
+    DOCKER_HOST: tcp://docker:2375/
+  services:
+    - docker:stable-dind
+  only:
+    - /^master$/
+  tags:
+    - armv7l
 
 publish-crossplatform:
   stage: publish
@@ -85,8 +116,13 @@ publish-crossplatform:
     - docker manifest create $CI_REGISTRY_IMAGE:latest $CI_REGISTRY_IMAGE:latest-x86_64 $CI_REGISTRY_IMAGE:latest-armhf
     - docker manifest annotate $CI_REGISTRY_IMAGE:latest $CI_REGISTRY_IMAGE:latest-x86_64 --arch amd64
     - docker manifest annotate $CI_REGISTRY_IMAGE:latest $CI_REGISTRY_IMAGE:latest-armhf --arch arm
+    # repeat for mosquitto
+    - docker manifest create $MOSQUITTO_IMAGE:latest $MOSQUITTO_IMAGE:latest-x86_64 $MOSQUITTO_IMAGE:latest-armhf
+    - docker manifest annotate $MOSQUITTO_IMAGE:latest $MOSQUITTO_IMAGE:latest-x86_64 --arch amd64
+    - docker manifest annotate $MOSQUITTO_IMAGE:latest $MOSQUITTO_IMAGE:latest-armhf --arch arm
     # push all the images together
     - docker manifest push $CI_REGISTRY_IMAGE:latest
+    - docker manifest push $MOSQUITTO_IMAGE:latest
   variables:
     DOCKER_HOST: tcp://docker:2375/
   services:
