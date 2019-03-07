@@ -4,7 +4,9 @@ import (
 	"fmt"
 	"github.com/eclipse/paho.mqtt.golang"
 	flag "github.com/spf13/pflag"
+	"hash/crc64"
 	"log"
+	"math/rand"
 	"os"
 	"strconv"
 	"time"
@@ -49,12 +51,14 @@ func main() {
 	sensorManagerClientId := getEnvMandatoryString("CLIENT_ID")
 	httpServerPort := getEnvMandatoryInt("HTTP_PORT")
 	authDatabaseFilename := getEnvMandatoryString("AUTH_DB_FILE")
-	systemToken := getEnvMandatoryString("SYSTEM_TOKEN")
+	administratorAccessToken := getEnvMandatoryString("ADMINISTRATOR_ACCESS_TOKEN")
+	applicationSecret := getEnvMandatoryString("APPLICATION_SECRET")
 
 	mqttAddress := fmt.Sprintf("tcp://%s:%d", mqttHost, mqttPort)
 
-	authDatabase := loadOrCreateAuthDatabase(authDatabaseFilename, systemToken)
-	mqttClient := connectMqttClient(mqttAddress, sensorManagerClientId, authDatabase.SystemServiceToken)
+	rand.Seed(int64(crc64.Checksum([]byte(applicationSecret), crc64.MakeTable(crc64.ECMA))))
+	authDatabase := loadOrCreateAuthDatabase(authDatabaseFilename, administratorAccessToken)
+	mqttClient := connectMqttClient(mqttAddress, sensorManagerClientId, authDatabase.AdministratorAccessToken)
 
 	if *testpublish {
 		runTestPublish(mqttClient)

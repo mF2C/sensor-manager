@@ -31,17 +31,17 @@ type AuthDatabase struct {
 	// maps sensor IDs to topics
 	Topics map[string]SensorTopic
 	// authenticates system services, also a big ugly hack
-	SystemServiceToken string
+	AdministratorAccessToken string
 }
 
-func loadOrCreateAuthDatabase(filename string, systemServiceToken string) AuthDatabase {
+func loadOrCreateAuthDatabase(filename string, administratorAccessToken string) AuthDatabase {
 	contents, err := ioutil.ReadFile(filename)
 	if err != nil {
 		log.Printf("Reading auth database file %s failed, creating anew.", filename)
 		newAuthDb := AuthDatabase{
-			Filename:           filename,
-			Topics:             map[string]SensorTopic{},
-			SystemServiceToken: systemServiceToken,
+			Filename:                 filename,
+			Topics:                   map[string]SensorTopic{},
+			AdministratorAccessToken: administratorAccessToken,
 		}
 		err = os.MkdirAll(path.Dir(filename), 0776)
 		if err != nil {
@@ -59,7 +59,7 @@ func loadOrCreateAuthDatabase(filename string, systemServiceToken string) AuthDa
 		panic(err)
 	}
 	// always overwrite
-	unmarshaled.SystemServiceToken = systemServiceToken
+	unmarshaled.AdministratorAccessToken = administratorAccessToken
 	return unmarshaled
 }
 

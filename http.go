@@ -52,7 +52,7 @@ func startBlockingHttpServer(authDb AuthDatabase, port uint16) {
 	http.HandleFunc("/superuser", func(writer http.ResponseWriter, request *http.Request) {
 		// system users are superusers
 		authParams := getParamsFromRequest(request)
-		if authParams.Username == SystemTokenUsername && authParams.Password == authDb.SystemServiceToken {
+		if authParams.Username == SystemTokenUsername && authParams.Password == authDb.AdministratorAccessToken {
 			writer.WriteHeader(200)
 		} else {
 			writer.WriteHeader(403)

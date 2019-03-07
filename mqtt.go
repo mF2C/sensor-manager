@@ -31,7 +31,7 @@ type OutgoingClientMessage struct {
 	Unit  string
 }
 
-func connectMqttClient(address string, id string, systemServiceToken string) mqtt.Client {
+func connectMqttClient(address string, id string, administratorAccessToken string) mqtt.Client {
 	log.Println("Building a new MQTT client.")
 	defaultMessageHandler := func(client mqtt.Client, msg mqtt.Message) {
 		log.Printf("%s -> %s", msg.Topic(), msg.Payload())
@@ -42,7 +42,7 @@ func connectMqttClient(address string, id string, systemServiceToken string) mqt
 	mqttClientOptions.SetDefaultPublishHandler(defaultMessageHandler)
 	mqttClientOptions.SetPingTimeout(1 * time.Second)
 	mqttClientOptions.SetUsername(SystemTokenUsername)
-	mqttClientOptions.SetPassword(systemServiceToken)
+	mqttClientOptions.SetPassword(administratorAccessToken)
 
 	mqttClient := mqtt.NewClient(mqttClientOptions)
 	log.Printf("Connecting to MQTT server at %s", address)

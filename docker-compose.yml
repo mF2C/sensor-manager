@@ -19,4 +19,5 @@ services:
       - "CLIENT_ID=sensor-manager"
       - "HTTP_PORT=8080"
       - "AUTH_DB_FILE=/data/authdb.json"
-      - "SYSTEM_TOKEN=thisisaverysecuretokenplsnocrack"
+      - "ADMINISTRATOR_ACCESS_TOKEN=thisisaverysecuretokenplsnocrack"
+      - "APPLICATION_SECRET=thisisaverysecureapplicationsecretplsnocrack"
