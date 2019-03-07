@@ -7,8 +7,8 @@ import (
 	"strconv"
 )
 
-const AccessTypeSubscribe = 1
-const AccessTypePublish = 2
+const MqttAuthAccessTypeSubscribe = 1
+const MqttAuthAccessTypePublish = 2
 
 type MqttAuthParams struct {
 	ClientId   string
@@ -61,7 +61,7 @@ func startBlockingHttpServer(authDb AuthDatabase, port uint16) {
 	http.HandleFunc("/acl", func(writer http.ResponseWriter, request *http.Request) {
 		authParams := getParamsFromRequest(request)
 		// no one is authorized to write to topics
-		if authParams.AccessType == AccessTypeSubscribe && authDb.isAuthorized(authParams.Username, authParams.Topic) {
+		if authParams.AccessType == MqttAuthAccessTypeSubscribe && authDb.isAuthorized(authParams.Username, authParams.Topic) {
 			writer.WriteHeader(200)
 		} else {
 			writer.WriteHeader(403)

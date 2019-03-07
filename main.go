@@ -49,10 +49,11 @@ func main() {
 	sensorManagerClientId := getEnvMandatoryString("CLIENT_ID")
 	httpServerPort := getEnvMandatoryInt("HTTP_PORT")
 	authDatabaseFilename := getEnvMandatoryString("AUTH_DB_FILE")
+	systemToken := getEnvMandatoryString("SYSTEM_TOKEN")
 
 	mqttAddress := fmt.Sprintf("tcp://%s:%d", mqttHost, mqttPort)
 
-	authDatabase := loadOrCreateAuthDatabase(authDatabaseFilename)
+	authDatabase := loadOrCreateAuthDatabase(authDatabaseFilename, systemToken)
 	mqttClient := connectMqttClient(mqttAddress, sensorManagerClientId, authDatabase.SystemServiceToken)
 
 	if *testpublish {
