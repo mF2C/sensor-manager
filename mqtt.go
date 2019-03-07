@@ -31,15 +31,21 @@ type OutgoingClientMessage struct {
 	Unit  string
 }
 
-func connectMqttClient(address string, id string, defaultHandler mqtt.MessageHandler, systemServiceToken string) mqtt.Client {
+func connectMqttClient(address string, id string, systemServiceToken string) mqtt.Client {
+	log.Println("Building a new MQTT client.")
+	defaultMessageHandler := func(client mqtt.Client, msg mqtt.Message) {
+		log.Printf("%s -> %s", msg.Topic(), msg.Payload())
+	}
+
 	mqttClientOptions := mqtt.NewClientOptions().AddBroker(address).SetClientID(id)
 	mqttClientOptions.SetKeepAlive(2 * time.Second)
-	mqttClientOptions.SetDefaultPublishHandler(defaultHandler)
+	mqttClientOptions.SetDefaultPublishHandler(defaultMessageHandler)
 	mqttClientOptions.SetPingTimeout(1 * time.Second)
 	mqttClientOptions.SetUsername(SystemTokenUsername)
 	mqttClientOptions.SetPassword(systemServiceToken)
 
 	mqttClient := mqtt.NewClient(mqttClientOptions)
+	log.Printf("Connecting to MQTT server at %s", address)
 	if token := mqttClient.Connect(); token.Wait() && token.Error() != nil {
 		panic(token.Error())
 	}
@@ -54,6 +60,7 @@ func transformMessage(incoming IncomingSensorMessage) OutgoingClientMessage {
 }
 
 func startMessageTransformations(subscribeClient mqtt.Client) {
+	log.Println("Starting message transformations.")
 	if token := subscribeClient.Subscribe(TopicSensorReceive, 0, func(receiveClient mqtt.Client, message mqtt.Message) {
 		unmarshaled := IncomingSensorMessage{}
 		err := json.Unmarshal(message.Payload(), &unmarshaled)

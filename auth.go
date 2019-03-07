@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
+	"os"
+	"path"
 	"strings"
 )
 
@@ -36,6 +38,11 @@ func loadOrCreateAuthDatabase(filename string) AuthDatabase {
 			Filename:           filename,
 			Topics:             map[string]SensorTopic{},
 			SystemServiceToken: generateSystemToken(),
+		}
+		err = os.MkdirAll(path.Dir(filename), 0776)
+		if err != nil {
+			log.Println(fmt.Errorf("could not create auth database parent directories, panic"))
+			panic(err)
 		}
 		newAuthDb.writeToFile()
 		return newAuthDb

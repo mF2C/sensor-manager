@@ -1,34 +1,63 @@
 package main
 
 import (
+	"fmt"
 	"github.com/eclipse/paho.mqtt.golang"
 	flag "github.com/spf13/pflag"
 	"log"
+	"os"
+	"strconv"
 	"time"
 )
 
+func runTestPublish(mqttClient mqtt.Client) {
+	log.Println("Starting in testpublish mode.")
+	publishMessagesIndefinitely(mqttClient, "testpublish", 1*time.Second)
+}
+
+func runProduction(mqttClient mqtt.Client, authDatabase AuthDatabase, httpServerPort uint16) {
+	log.Println("Starting in production mode.")
+	startMessageTransformations(mqttClient)
+	startBlockingHttpServer(authDatabase, httpServerPort)
+}
+
+func getEnvMandatoryString(envName string) string {
+	value, exists := os.LookupEnv(envName)
+	if !exists {
+		panic(fmt.Errorf("environment variable %s is mandatory", envName))
+	} else {
+		log.Printf("Read env var %s as %s.", envName, value)
+		return value
+	}
+}
+
+func getEnvMandatoryInt(envName string) int {
+	stringVal := getEnvMandatoryString(envName)
+	intVal, err := strconv.Atoi(stringVal)
+	if err != nil {
+		panic(fmt.Errorf("could not parse integer from %s for env var %s", stringVal, envName))
+	}
+	return intVal
+}
+
 func main() {
-	testpublish := flag.Bool("testpublish", false, "Publish messages to MQTT indefinitely.")
+	testpublish := flag.Bool("testpublish", false, "Test mode: publish messages to MQTT indefinitely.")
 	flag.Parse()
 
-	authDatabase := loadOrCreateAuthDatabase("authdb.json")
+	mqttHost := getEnvMandatoryString("MQTT_HOST")
+	mqttPort := getEnvMandatoryInt("MQTT_PORT")
+	sensorManagerClientId := getEnvMandatoryString("CLIENT_ID")
+	httpServerPort := getEnvMandatoryInt("HTTP_PORT")
+	authDatabaseFilename := getEnvMandatoryString("AUTH_DB_FILE")
 
-	messageHandler := func(client mqtt.Client, msg mqtt.Message) {
-		log.Printf("TOPIC: %s\n", msg.Topic())
-		log.Printf("MSG: %s\n", msg.Payload())
-	}
+	mqttAddress := fmt.Sprintf("tcp://%s:%d", mqttHost, mqttPort)
 
-	address := "tcp://172.21.0.68:1883"
-	log.Printf("Connecting to MQTT server at %s", address)
-	mqttClient := connectMqttClient(address, "sensor-manager", messageHandler, authDatabase.SystemServiceToken)
+	authDatabase := loadOrCreateAuthDatabase(authDatabaseFilename)
+	mqttClient := connectMqttClient(mqttAddress, sensorManagerClientId, authDatabase.SystemServiceToken)
 
 	if *testpublish {
-		log.Println("Testpublish mode activated.")
-		publishMessagesIndefinitely(mqttClient, "testpublish", 1*time.Second)
+		runTestPublish(mqttClient)
+	} else {
+		runProduction(mqttClient, authDatabase, uint16(httpServerPort))
 	}
-
-	log.Println("Starting message transformations")
-	startMessageTransformations(mqttClient)
-	log.Println("Starting HTTP server on port 8080.")
-	startBlockingHttpServer(authDatabase, 8080)
 }

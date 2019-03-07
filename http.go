@@ -40,6 +40,7 @@ func getParamsFromRequest(req *http.Request) MqttAuthParams {
 }
 
 func startBlockingHttpServer(authDb AuthDatabase, port uint16) {
+	log.Printf("Starting HTTP server on port %d.", port)
 	http.HandleFunc("/auth", func(writer http.ResponseWriter, request *http.Request) {
 		authParams := getParamsFromRequest(request)
 		if authDb.isAuthenticated(authParams.Username, authParams.Password) {
