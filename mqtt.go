@@ -31,18 +31,22 @@ type OutgoingClientMessage struct {
 	Unit  string
 }
 
-func connectMqttClient(address string, id string, administratorAccessToken string) mqtt.Client {
-	log.Println("Building a new MQTT client.")
+func connectMqttClient(address string, clientId string, username string, password string) mqtt.Client {
+	log.Printf("Building a new MQTT client  with id %s.", clientId)
 	defaultMessageHandler := func(client mqtt.Client, msg mqtt.Message) {
-		log.Printf("%s -> %s", msg.Topic(), msg.Payload())
+		log.Printf("client %s got: %s -> %s", clientId, msg.Topic(), msg.Payload())
 	}
 
-	mqttClientOptions := mqtt.NewClientOptions().AddBroker(address).SetClientID(id)
+	mqttClientOptions := mqtt.NewClientOptions().AddBroker(address).SetClientID(clientId)
 	mqttClientOptions.SetKeepAlive(2 * time.Second)
 	mqttClientOptions.SetDefaultPublishHandler(defaultMessageHandler)
 	mqttClientOptions.SetPingTimeout(1 * time.Second)
-	mqttClientOptions.SetUsername(SystemTokenUsername)
-	mqttClientOptions.SetPassword(administratorAccessToken)
+	if username != "" {
+		mqttClientOptions.SetUsername(username)
+	}
+	if password != "" {
+		mqttClientOptions.SetPassword(password)
+	}
 
 	mqttClient := mqtt.NewClient(mqttClientOptions)
 	log.Printf("Connecting to MQTT server at %s", address)

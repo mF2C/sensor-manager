@@ -12,9 +12,9 @@ import (
 	"time"
 )
 
-func runTestPublish(mqttClient mqtt.Client) {
-	log.Println("Starting in testpublish mode.")
-	publishMessagesIndefinitely(mqttClient, "testpublish", 1*time.Second)
+func runSensorSimulator(mqttClient mqtt.Client) {
+	log.Println("Starting in sensor simulation mode.")
+	publishMessagesIndefinitely(mqttClient, "su", 1*time.Second)
 }
 
 func runProduction(mqttClient mqtt.Client, authDatabase AuthDatabase, httpServerPort uint16) {
@@ -43,26 +43,27 @@ func getEnvMandatoryInt(envName string) int {
 }
 
 func main() {
-	testpublish := flag.Bool("testpublish", false, "Test mode: publish messages to MQTT indefinitely.")
+	simulateSensor := flag.Bool("simulate-sensor", false, "Test mode: sensor simulation.")
 	flag.Parse()
 
 	mqttHost := getEnvMandatoryString("MQTT_HOST")
 	mqttPort := getEnvMandatoryInt("MQTT_PORT")
-	sensorManagerClientId := getEnvMandatoryString("CLIENT_ID")
-	httpServerPort := getEnvMandatoryInt("HTTP_PORT")
-	authDatabaseFilename := getEnvMandatoryString("AUTH_DB_FILE")
-	administratorAccessToken := getEnvMandatoryString("ADMINISTRATOR_ACCESS_TOKEN")
-	applicationSecret := getEnvMandatoryString("APPLICATION_SECRET")
 
 	mqttAddress := fmt.Sprintf("tcp://%s:%d", mqttHost, mqttPort)
 
-	rand.Seed(int64(crc64.Checksum([]byte(applicationSecret), crc64.MakeTable(crc64.ECMA))))
-	authDatabase := loadOrCreateAuthDatabase(authDatabaseFilename, administratorAccessToken)
-	mqttClient := connectMqttClient(mqttAddress, sensorManagerClientId, authDatabase.AdministratorAccessToken)
-
-	if *testpublish {
-		runTestPublish(mqttClient)
+	if *simulateSensor {
+		mqttClient := connectMqttClient(mqttAddress, "sensor-simulator", "", "")
+		runSensorSimulator(mqttClient)
 	} else {
+		httpServerPort := getEnvMandatoryInt("HTTP_PORT")
+		authDatabaseFilename := getEnvMandatoryString("AUTH_DB_FILE")
+		administratorAccessToken := getEnvMandatoryString("ADMINISTRATOR_ACCESS_TOKEN")
+		applicationSecret := getEnvMandatoryString("APPLICATION_SECRET")
+
+		rand.Seed(int64(crc64.Checksum([]byte(applicationSecret), crc64.MakeTable(crc64.ECMA))))
+		authDatabase := loadOrCreateAuthDatabase(authDatabaseFilename, administratorAccessToken)
+		mqttClient := connectMqttClient(mqttAddress, "sensor-manager", SystemTokenUsername, authDatabase.AdministratorAccessToken)
+
 		runProduction(mqttClient, authDatabase, uint16(httpServerPort))
 	}
 }

@@ -16,7 +16,6 @@ services:
     environment:
       - "MQTT_HOST=mosquitto"
       - "MQTT_PORT=1883"
-      - "CLIENT_ID=sensor-manager"
       - "HTTP_PORT=8080"
       - "AUTH_DB_FILE=/data/authdb.json"
       - "ADMINISTRATOR_ACCESS_TOKEN=thisisaverysecuretokenplsnocrack"
