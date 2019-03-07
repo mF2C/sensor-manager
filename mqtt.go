@@ -5,6 +5,7 @@ import (
 	"github.com/eclipse/paho.mqtt.golang"
 	"log"
 	"os"
+	"sync"
 	"time"
 )
 
@@ -71,7 +72,8 @@ func transformMessage(incoming IncomingSensorMessage) OutgoingClientMessage {
 	}
 }
 
-func startMessageTransformations(subscribeClient mqtt.Client, authDb AuthDatabase) {
+func startMessageTransformations(wg *sync.WaitGroup, authDb *AuthDatabase, subscribeClient mqtt.Client) {
+	defer wg.Done()
 	log.Println("Starting message transformations.")
 	if token := subscribeClient.Subscribe(TopicSensorReceive, 0, func(receiveClient mqtt.Client, message mqtt.Message) {
 		unmarshaled := IncomingSensorMessage{}

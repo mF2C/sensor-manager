@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+	"sync"
 )
 
 const MqttAuthAccessTypeSubscribe = 1
@@ -39,7 +40,7 @@ func getParamsFromRequest(req *http.Request) MqttAuthParams {
 	}
 }
 
-func startBlockingHttpServer(authDb AuthDatabase, port uint16) {
+func startBlockingHttpServer(wg *sync.WaitGroup, authDb *AuthDatabase, port uint16) {
 	log.Printf("Starting HTTP server on port %d.", port)
 	http.HandleFunc("/auth", func(writer http.ResponseWriter, request *http.Request) {
 		authParams := getParamsFromRequest(request)
@@ -67,5 +68,6 @@ func startBlockingHttpServer(authDb AuthDatabase, port uint16) {
 			writer.WriteHeader(403)
 		}
 	})
+	defer wg.Done()
 	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", port), nil))
 }

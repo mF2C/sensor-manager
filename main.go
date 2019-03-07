@@ -9,6 +9,7 @@ import (
 	"math/rand"
 	"os"
 	"strconv"
+	"sync"
 	"time"
 )
 
@@ -19,8 +20,12 @@ func runSensorSimulator(mqttClient mqtt.Client) {
 
 func runProduction(mqttClient mqtt.Client, authDatabase AuthDatabase, httpServerPort uint16) {
 	log.Println("Starting in production mode.")
-	startMessageTransformations(mqttClient, authDatabase)
-	startBlockingHttpServer(authDatabase, httpServerPort)
+	// the server needs to start beforehand, as message transformations connect to MQTT and thus require auth
+	wg := sync.WaitGroup{}
+	wg.Add(2)
+	go startBlockingHttpServer(&wg, &authDatabase, httpServerPort)
+	go startMessageTransformations(&wg, &authDatabase, mqttClient)
+	wg.Wait()
 }
 
 func getEnvMandatoryString(envName string) string {
