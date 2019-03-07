@@ -1,6 +1,8 @@
 package main
 
 import (
+	"crypto/rand"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -11,6 +13,8 @@ import (
 )
 
 const SystemTokenUsername = "system"
+// should be a multiple of 8
+const GeneratedTokenLengthBytes = 32
 
 type SensorTopic struct {
 	SensorId string
@@ -68,12 +72,24 @@ func buildTopicFromSensorId(unsafe string) string {
 	return TopicClientPublishRoot + sanitised
 }
 
+func generateRandomString() string {
+	base := make([]byte, GeneratedTokenLengthBytes)
+	_, err := rand.Read(base)
+	if err != nil {
+		// the docs say this always returns nil
+		// why even have the error ffs
+		panic(err)
+	}
+	return base64.StdEncoding.EncodeToString(base)
+}
+
+
 func generateSystemToken() string {
-	return "systemtoken"
+	return generateRandomString()
 }
 
 func generateUsernamePassword() (username string, password string) {
-	return "user", "pass"
+	return generateRandomString(), generateRandomString()
 }
 
 func (db AuthDatabase) writeToFile() {
