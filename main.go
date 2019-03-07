@@ -17,7 +17,7 @@ func runTestPublish(mqttClient mqtt.Client) {
 
 func runProduction(mqttClient mqtt.Client, authDatabase AuthDatabase, httpServerPort uint16) {
 	log.Println("Starting in production mode.")
-	startMessageTransformations(mqttClient)
+	startMessageTransformations(mqttClient, authDatabase)
 	startBlockingHttpServer(authDatabase, httpServerPort)
 }
 

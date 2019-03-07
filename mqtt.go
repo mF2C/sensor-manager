@@ -59,7 +59,7 @@ func transformMessage(incoming IncomingSensorMessage) OutgoingClientMessage {
 	}
 }
 
-func startMessageTransformations(subscribeClient mqtt.Client) {
+func startMessageTransformations(subscribeClient mqtt.Client, authDb AuthDatabase) {
 	log.Println("Starting message transformations.")
 	if token := subscribeClient.Subscribe(TopicSensorReceive, 0, func(receiveClient mqtt.Client, message mqtt.Message) {
 		unmarshaled := IncomingSensorMessage{}
@@ -67,13 +67,21 @@ func startMessageTransformations(subscribeClient mqtt.Client) {
 		if err != nil {
 			log.Println(err)
 		} else {
-			remarshaled, err := json.Marshal(transformMessage(unmarshaled))
+			transformedRemarshaled, err := json.Marshal(transformMessage(unmarshaled))
 			if err != nil {
 				log.Println(err)
 			} else {
-				outTopic := TopicClientPublishRoot + unmarshaled.SensorId
-				log.Printf("Message transformation successful publishing on the outgoing topic: %s", outTopic)
-				receiveClient.Publish(outTopic, 0, false, remarshaled)
+				outTopicName, err := authDb.getTopicForSensor(unmarshaled.SensorId)
+				if err != nil {
+					newTopicName, err := authDb.addSensorTopic(unmarshaled.SensorId, unmarshaled.Quantity)
+					if err != nil {
+						panic(err)
+					}
+					// go is such agile and also very good language, wow
+					outTopicName = newTopicName
+				}
+				log.Printf("Message transformation successful publishing on the outgoing topic: %s", outTopicName)
+				receiveClient.Publish(outTopicName, 0, false, transformedRemarshaled)
 			}
 		}
 	}); token.Wait() && token.Error() != nil {

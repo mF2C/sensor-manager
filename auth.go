@@ -104,9 +104,9 @@ func (db AuthDatabase) writeToFile() {
 	}
 }
 
-func (db AuthDatabase) addSensorTopic(sensorId string, quantity string) error {
+func (db AuthDatabase) addSensorTopic(sensorId string, quantity string) (topicName string, err error) {
 	if _, ok := db.Topics[sensorId]; !ok {
-		return fmt.Errorf("sensor ID already exists: %s", sensorId)
+		return "", fmt.Errorf("sensor ID already exists: %s", sensorId)
 	}
 	username, password := generateUsernamePassword()
 	newTopic := SensorTopic{
@@ -119,10 +119,10 @@ func (db AuthDatabase) addSensorTopic(sensorId string, quantity string) error {
 	db.Topics[sensorId] = newTopic
 	db.writeToFile()
 	log.Printf("Added topic %s for sensor %s", newTopic.Name, newTopic.SensorId)
-	return nil
+	return newTopic.Name, nil
 }
 
-func (db AuthDatabase) getTopicForSensor(sensorId string) (string, error) {
+func (db AuthDatabase) getTopicForSensor(sensorId string) (topicName string, err error) {
 	topic, ok := db.Topics[sensorId]
 	if !ok {
 		return "", fmt.Errorf("no topic for sensor %s", sensorId)
