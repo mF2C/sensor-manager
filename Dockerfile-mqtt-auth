@@ -46,8 +46,7 @@ RUN mkdir -p /build \
     && mv /etc/mosquitto/mosquitto.conf.example /etc/mosquitto/mosquitto.conf \
     && mkdir -p /etc/mosquitto/mosquitto.conf.d/ \
     && sed -ri "s/#user.*?/user root/" /etc/mosquitto/mosquitto.conf \
-    && sed -ri "s|#include_dir.*?|include_dir /etc/mosquitto/mosquitto.conf.d/|" /etc/mosquitto/mosquitto.conf \
-    && sed -ri "s|#auth_plugin.*?|auth_plugin /usr/local/lib/auth-plug.so\nauth_opt_backends http\n|" /etc/mosquitto/mosquitto.conf
+    && sed -ri "s|#include_dir.*?|include_dir /etc/mosquitto/mosquitto.conf.d/|" /etc/mosquitto/mosquitto.conf
 
 ADD entrypoint-mosquitto.sh /entrypoint-mosquitto.sh
 RUN chmod u+x /entrypoint-mosquitto.sh
