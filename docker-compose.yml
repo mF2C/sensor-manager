@@ -9,6 +9,8 @@ services:
       - "MOSQUITTO_AUTH_HTTP_PORT=8080"
   sensor-manager:
     image: registry-gitlab.xlab.si/mf2c/sensor-manager:latest
+    depends_on:
+      - mosquitto
     ports:
       - 8080:8080
     environment:
