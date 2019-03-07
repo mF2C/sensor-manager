@@ -50,9 +50,17 @@ func connectMqttClient(address string, clientId string, username string, passwor
 
 	mqttClient := mqtt.NewClient(mqttClientOptions)
 	log.Printf("Connecting to MQTT server at %s", address)
-	if token := mqttClient.Connect(); token.Wait() && token.Error() != nil {
-		panic(token.Error())
+	connectionSuccessful := false
+	for i := 1; !connectionSuccessful; i++ {
+		log.Printf("    connection attempt %d...", i)
+		if token := mqttClient.Connect(); token.Wait() && token.Error() != nil {
+			log.Printf("        unsuccessful: %s", token.Error())
+			time.Sleep(1 * time.Second)
+		} else {
+			connectionSuccessful = true
+		}
 	}
+	log.Println("Connection to MQTT server successful.")
 	return mqttClient
 }
 
