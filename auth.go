@@ -157,7 +157,7 @@ func (db AuthDatabase) isAuthenticated(username string, password string) bool {
 // authentication with the password is done in isAuthenticated
 // the password is not available here, as this is only called when authentication passes
 func (db AuthDatabase) isAuthorized(username string, topic string) bool {
-	if constantTimeStringEqual(username, SuperuserUsername) && (constantTimeStringEqual(username, SensorDriverUsername) && constantTimeStringEqual(topic, TopicSensorReceive)) {
+	if constantTimeStringEqual(username, SuperuserUsername) || (constantTimeStringEqual(username, SensorDriverUsername) && constantTimeStringEqual(topic, TopicSensorReceive)) {
 		return true
 	}
 	for _, dbTopic := range db.Topics {
