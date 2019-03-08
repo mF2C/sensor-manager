@@ -17,7 +17,7 @@ auth_opt_http_getuser_uri   /auth
 auth_opt_http_superuser_uri /superuser
 auth_opt_http_aclcheck_uri  /acl
 auth_opt_http_with_tls      false
-auth_opt_http_retry_count   5
+auth_opt_http_retry_count   2
 EOF
 
 /usr/local/sbin/mosquitto -c /etc/mosquitto/mosquitto.conf
