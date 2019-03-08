@@ -20,6 +20,8 @@ type IncomingSensorMessage struct {
 	SensorType string
 	// the SI dimension (temperature, humidity, weight, etc)
 	Quantity string
+	// the timestamp in RFC 3339
+	Timestamp string
 	Value    float64
 	// the SI unit (deg. celsius, RH%, kg, etc), without SI prefixes (except kg, which is a base unit)
 	Unit string
@@ -28,6 +30,7 @@ type IncomingSensorMessage struct {
 // only defines values not known prior to the request
 // e.g. not the sensor type, because this sensor's data has been requested
 type OutgoingClientMessage struct {
+	Timestamp string
 	Value float64
 	Unit  string
 }
@@ -67,8 +70,14 @@ func connectMqttClient(address string, clientId string, username string, passwor
 	return mqttClient
 }
 
+func validateIncomingMessage(incoming IncomingSensorMessage) bool {
+	_, err := time.Parse(time.RFC3339, incoming.Timestamp)
+	return err != nil
+}
+
 func transformMessage(incoming IncomingSensorMessage) OutgoingClientMessage {
 	return OutgoingClientMessage{
+		Timestamp: incoming.Timestamp,
 		Value: incoming.Value,
 		Unit:  incoming.Unit,
 	}
@@ -83,21 +92,25 @@ func startMessageTransformations(wg *sync.WaitGroup, authDb *AuthDatabase, subsc
 		if err != nil {
 			log.Println(err)
 		} else {
-			transformedRemarshaled, err := json.Marshal(transformMessage(unmarshaled))
-			if err != nil {
-				log.Println(err)
+			if !validateIncomingMessage(unmarshaled) {
+				log.Printf("Invalid timestamp format for incoming message, skipping: %s", unmarshaled.Timestamp)
 			} else {
-				outTopicName, err := authDb.getTopicForSensor(unmarshaled.SensorId)
+				transformedRemarshaled, err := json.Marshal(transformMessage(unmarshaled))
 				if err != nil {
-					newTopicName, err := authDb.addSensorTopic(unmarshaled.SensorId, unmarshaled.Quantity)
+					log.Println(err)
+				} else {
+					outTopicName, err := authDb.getTopicForSensor(unmarshaled.SensorId)
 					if err != nil {
-						panic(err)
+						newTopicName, err := authDb.addSensorTopic(unmarshaled.SensorId, unmarshaled.Quantity)
+						if err != nil {
+							panic(err)
+						}
+						// go is such agile and also very good language, wow
+						outTopicName = newTopicName
 					}
-					// go is such agile and also very good language, wow
-					outTopicName = newTopicName
+					log.Printf("Message transformation successful, publishing on the outgoing topic: %s", outTopicName)
+					receiveClient.Publish(outTopicName, 0, false, transformedRemarshaled)
 				}
-				log.Printf("Message transformation successful, publishing on the outgoing topic: %s", outTopicName)
-				receiveClient.Publish(outTopicName, 0, false, transformedRemarshaled)
 			}
 		}
 	}); token.Wait() && token.Error() != nil {

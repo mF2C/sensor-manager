@@ -21,6 +21,7 @@ JSON structure:
     "SensorId":   "string, an ID that differentiates this piece of hardware sensor from others",
     "SensorType": "string, the type of the sensor (hardware)",
     "Quantity":   "string, the SI dimension, e.g. humidity",
+    "Timestamp":  "string, RFC 3339, when the measurement was taken",
     "Value":      "float, the measurement value",
     "Unit":       "string, the base SI unit"
 }
