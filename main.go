@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"github.com/eclipse/paho.mqtt.golang"
 	flag "github.com/spf13/pflag"
 	"hash/crc64"
 	"log"
@@ -13,17 +12,19 @@ import (
 	"time"
 )
 
-func runSensorSimulator(mqttClient mqtt.Client) {
+func runSensorSimulator(mqttHost string, mqttPort uint16) {
 	log.Println("Starting in sensor simulation mode.")
+	mqttClient := connectMqttClient(fmt.Sprintf("tcp://%s:%d", mqttHost, mqttPort), "sensor-simulator", "", "")
 	publishMessagesIndefinitely(mqttClient, "su", 1*time.Second)
 }
 
-func runProduction(mqttClient mqtt.Client, authDatabase AuthDatabase, httpServerPort uint16) {
+func runProduction(mqttHost string, mqttPort uint16, authDatabase AuthDatabase, httpServerPort uint16) {
 	log.Println("Starting in production mode.")
 	// the server needs to start beforehand, as message transformations connect to MQTT and thus require auth
 	wg := sync.WaitGroup{}
 	wg.Add(2)
 	go startBlockingHttpServer(&wg, &authDatabase, httpServerPort)
+	mqttClient := connectMqttClient(fmt.Sprintf("tcp://%s:%d", mqttHost, mqttPort), "sensor-manager", SystemTokenUsername, authDatabase.AdministratorAccessToken)
 	go startMessageTransformations(&wg, &authDatabase, mqttClient)
 	wg.Wait()
 }
@@ -54,11 +55,8 @@ func main() {
 	mqttHost := getEnvMandatoryString("MQTT_HOST")
 	mqttPort := getEnvMandatoryInt("MQTT_PORT")
 
-	mqttAddress := fmt.Sprintf("tcp://%s:%d", mqttHost, mqttPort)
-
 	if *simulateSensor {
-		mqttClient := connectMqttClient(mqttAddress, "sensor-simulator", "", "")
-		runSensorSimulator(mqttClient)
+		runSensorSimulator(mqttHost, uint16(mqttPort))
 	} else {
 		httpServerPort := getEnvMandatoryInt("HTTP_PORT")
 		authDatabaseFilename := getEnvMandatoryString("AUTH_DB_FILE")
@@ -67,8 +65,7 @@ func main() {
 
 		rand.Seed(int64(crc64.Checksum([]byte(applicationSecret), crc64.MakeTable(crc64.ECMA))))
 		authDatabase := loadOrCreateAuthDatabase(authDatabaseFilename, administratorAccessToken)
-		mqttClient := connectMqttClient(mqttAddress, "sensor-manager", SystemTokenUsername, authDatabase.AdministratorAccessToken)
 
-		runProduction(mqttClient, authDatabase, uint16(httpServerPort))
+		runProduction(mqttHost, uint16(mqttPort), authDatabase, uint16(httpServerPort))
 	}
 }

@@ -41,13 +41,15 @@ func getParamsFromRequest(req *http.Request) MqttAuthParams {
 }
 
 func startBlockingHttpServer(wg *sync.WaitGroup, authDb *AuthDatabase, port uint16) {
-	log.Printf("Starting HTTP server on port %d.", port)
 	http.HandleFunc("/auth", func(writer http.ResponseWriter, request *http.Request) {
 		authParams := getParamsFromRequest(request)
+		log.Printf("/auth (200) -> %+v", authParams)
 		if authDb.isAuthenticated(authParams.Username, authParams.Password) {
 			writer.WriteHeader(200)
+			log.Printf("/auth (200) -> %+v", authParams)
 		} else {
 			writer.WriteHeader(403)
+			log.Printf("/auth (403) -> %+v", authParams)
 		}
 	})
 	http.HandleFunc("/superuser", func(writer http.ResponseWriter, request *http.Request) {
@@ -55,8 +57,10 @@ func startBlockingHttpServer(wg *sync.WaitGroup, authDb *AuthDatabase, port uint
 		authParams := getParamsFromRequest(request)
 		if authParams.Username == SystemTokenUsername && authParams.Password == authDb.AdministratorAccessToken {
 			writer.WriteHeader(200)
+			log.Printf("/superuser (200) -> %+v", authParams)
 		} else {
 			writer.WriteHeader(403)
+			log.Printf("/superuser (403) -> %+v", authParams)
 		}
 	})
 	http.HandleFunc("/acl", func(writer http.ResponseWriter, request *http.Request) {
@@ -64,10 +68,13 @@ func startBlockingHttpServer(wg *sync.WaitGroup, authDb *AuthDatabase, port uint
 		// no one is authorized to write to topics
 		if authParams.AccessType == MqttAuthAccessTypeSubscribe && authDb.isAuthorized(authParams.Username, authParams.Topic) {
 			writer.WriteHeader(200)
+			log.Printf("/acl (200) -> %+v", authParams)
 		} else {
 			writer.WriteHeader(403)
+			log.Printf("/acl (403) -> %+v", authParams)
 		}
 	})
 	defer wg.Done()
+	log.Printf("Starting HTTP server on port %d.", port)
 	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", port), nil))
 }

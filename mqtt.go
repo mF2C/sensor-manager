@@ -33,7 +33,7 @@ type OutgoingClientMessage struct {
 }
 
 func connectMqttClient(address string, clientId string, username string, password string) mqtt.Client {
-	log.Printf("Building a new MQTT client  with id %s.", clientId)
+	log.Printf("Building a new MQTT client with id %s.", clientId)
 	defaultMessageHandler := func(client mqtt.Client, msg mqtt.Message) {
 		log.Printf("client %s got: %s -> %s", clientId, msg.Topic(), msg.Payload())
 	}
@@ -94,7 +94,7 @@ func startMessageTransformations(wg *sync.WaitGroup, authDb *AuthDatabase, subsc
 					// go is such agile and also very good language, wow
 					outTopicName = newTopicName
 				}
-				log.Printf("Message transformation successful publishing on the outgoing topic: %s", outTopicName)
+				log.Printf("Message transformation successful, publishing on the outgoing topic: %s", outTopicName)
 				receiveClient.Publish(outTopicName, 0, false, transformedRemarshaled)
 			}
 		}
