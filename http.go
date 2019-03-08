@@ -43,7 +43,6 @@ func getParamsFromRequest(req *http.Request) MqttAuthParams {
 func startBlockingHttpServer(wg *sync.WaitGroup, authDb *AuthDatabase, port uint16) {
 	http.HandleFunc("/auth", func(writer http.ResponseWriter, request *http.Request) {
 		authParams := getParamsFromRequest(request)
-		log.Printf("/auth (200) -> %+v", authParams)
 		if authDb.isAuthenticated(authParams.Username, authParams.Password) {
 			writer.WriteHeader(200)
 			log.Printf("/auth (200) -> %+v", authParams)
@@ -60,7 +59,7 @@ func startBlockingHttpServer(wg *sync.WaitGroup, authDb *AuthDatabase, port uint
 			log.Printf("/superuser (200) -> %+v", authParams)
 		} else {
 			writer.WriteHeader(403)
-			log.Printf("/superuser (403) -> %+v", authParams)
+			log.Printf("/superuser (403) -> %+v (truth=%s:%s)", authParams, SystemTokenUsername, authDb.AdministratorAccessToken)
 		}
 	})
 	http.HandleFunc("/acl", func(writer http.ResponseWriter, request *http.Request) {
