@@ -157,7 +157,7 @@ func (db AuthDatabase) isAuthenticated(username string, password string) bool {
 // authentication with the password is done in isAuthenticated
 // the password is not available here, as this is only called when authentication passes
 func (db AuthDatabase) isAuthorized(username string, topic string) bool {
-	if constantTimeStringEqual(username, SuperuserUsername) || (constantTimeStringEqual(username, SensorDriverUsername) && constantTimeStringEqual(topic, TopicSensorReceive)) {
+	if db.isSuperuserPreauthenticated(username) || (constantTimeStringEqual(username, SensorDriverUsername) && constantTimeStringEqual(topic, TopicSensorReceive)) {
 		return true
 	}
 	for _, dbTopic := range db.Topics {
@@ -170,6 +170,10 @@ func (db AuthDatabase) isAuthorized(username string, topic string) bool {
 
 func (db AuthDatabase) isSuperuser(username string, password string) bool {
 	return constantTimeStringEqual(username, SuperuserUsername) && constantTimeStringEqual(password, db.AdministratorAccessToken)
+}
+
+func (db AuthDatabase) isSuperuserPreauthenticated(username string) bool {
+	return constantTimeStringEqual(username, SuperuserUsername)
 }
 
 func (db AuthDatabase) isSensorDriver(username string, password string) bool {

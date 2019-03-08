@@ -54,7 +54,7 @@ func startBlockingHttpServer(wg *sync.WaitGroup, authDb *AuthDatabase, port uint
 	http.HandleFunc("/superuser", func(writer http.ResponseWriter, request *http.Request) {
 		// system users are superusers
 		authParams := getParamsFromRequest(request)
-		if authDb.isSuperuser(authParams.Username, authParams.Password) {
+		if authDb.isSuperuserPreauthenticated(authParams.Username) {
 			writer.WriteHeader(200)
 			log.Printf("/superuser (200) -> %+v", authParams)
 		} else {
