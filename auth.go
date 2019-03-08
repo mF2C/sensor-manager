@@ -130,6 +130,9 @@ func (db AuthDatabase) getTopicForSensor(sensorId string) (topicName string, err
 
 // if any credential matches, the user is authenticated
 func (db AuthDatabase) isAuthenticated(username string, password string) bool {
+	if db.isSuperuser(username, password) {
+		return true
+	}
 	for _, dbTopic := range db.Topics {
 		if dbTopic.Username == username && dbTopic.Password == password {
 			return true
@@ -147,4 +150,8 @@ func (db AuthDatabase) isAuthorized(username string, topic string) bool {
 		}
 	}
 	return false
+}
+
+func (db AuthDatabase) isSuperuser(username string, password string) bool {
+	return username == SystemTokenUsername && password == db.AdministratorAccessToken
 }
