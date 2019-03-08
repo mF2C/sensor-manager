@@ -9,10 +9,11 @@ SENSOR_MANAGER_HOST=<host>
 SENSOR_MANAGER_PORT=<port>
 SENSOR_MANAGER_USERNAME=<username>
 SENSOR_MANAGER_PASSWORD=<password>
+SENSOR_MANAGER_TOPIC=<topic>
 ``` 
 
-It must publish sensor values to an MQTT server at that endpoint to the `/sensor-manager/sensor-incoming` topic.
-Authenticate with the username and password in the environment variables. The values must conform to the following 
+It must publish sensor values to an MQTT server at that endpoint to the specified topic, authenticated with 
+the username and password in the environment variables. The values must conform to the following 
 JSON structure:
 
 ```json
