@@ -2,6 +2,7 @@ package main
 
 import (
 	"crypto/rand"
+	"crypto/subtle"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -91,6 +92,10 @@ func generateRandomString() string {
 	return base64.StdEncoding.EncodeToString(base)
 }
 
+func constantTimeStringEqual(left string, right string) bool {
+	return subtle.ConstantTimeCompare([]byte(left), []byte(right)) == 1
+}
+
 func generateUsernamePassword() (username string, password string) {
 	return generateRandomString(), generateRandomString()
 }
@@ -140,7 +145,7 @@ func (db AuthDatabase) isAuthenticated(username string, password string) bool {
 		return true
 	}
 	for _, dbTopic := range db.Topics {
-		if dbTopic.Username == username && dbTopic.Password == password {
+		if constantTimeStringEqual(username, dbTopic.Username) && constantTimeStringEqual(password, dbTopic.Password) {
 			return true
 		}
 	}
@@ -150,11 +155,11 @@ func (db AuthDatabase) isAuthenticated(username string, password string) bool {
 // if the (username, topic) tuple exists
 // authentication with the password is done in isAuthenticated
 func (db AuthDatabase) isAuthorized(username string, topic string) bool {
-	if username == SensorDriverUsername && topic == TopicSensorReceive {
+	if constantTimeStringEqual(username, SensorDriverUsername) && constantTimeStringEqual(topic, TopicSensorReceive) {
 		return true
 	}
 	for _, dbTopic := range db.Topics {
-		if dbTopic.Name == topic && dbTopic.Username == username {
+		if constantTimeStringEqual(topic, dbTopic.Name) && constantTimeStringEqual(username, dbTopic.Username) {
 			return true
 		}
 	}
@@ -162,9 +167,9 @@ func (db AuthDatabase) isAuthorized(username string, topic string) bool {
 }
 
 func (db AuthDatabase) isSuperuser(username string, password string) bool {
-	return username == SuperuserUsername && password == db.AdministratorAccessToken
+	return constantTimeStringEqual(username, SuperuserUsername) && constantTimeStringEqual(password, db.AdministratorAccessToken)
 }
 
 func (db AuthDatabase) isSensorDriver(username string, password string) bool {
-	return username == SensorDriverUsername && password == db.SensorDriverAccessToken
+	return constantTimeStringEqual(username, SensorDriverUsername) && constantTimeStringEqual(password, db.SensorDriverAccessToken)
 }
