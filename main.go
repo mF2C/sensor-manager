@@ -12,10 +12,10 @@ import (
 	"time"
 )
 
-func runSensorSimulator(mqttHost string, mqttPort uint16) {
+func runSensorSimulator(mqttHost string, mqttPort uint16, sensorDriverPassword string) {
 	log.Println("Starting in sensor simulation mode.")
-	mqttClient := connectMqttClient(fmt.Sprintf("tcp://%s:%d", mqttHost, mqttPort), "sensor-simulator", "", "")
-	publishMessagesIndefinitely(mqttClient, "su", 1*time.Second)
+	mqttClient := connectMqttClient(fmt.Sprintf("tcp://%s:%d", mqttHost, mqttPort), "sensor-simulator", SensorDriverUsername, sensorDriverPassword)
+	publishMessagesIndefinitely(mqttClient, TopicSensorReceive, 1*time.Second)
 }
 
 func runProduction(mqttHost string, mqttPort uint16, authDatabase AuthDatabase, httpServerPort uint16) {
@@ -24,7 +24,7 @@ func runProduction(mqttHost string, mqttPort uint16, authDatabase AuthDatabase, 
 	wg := sync.WaitGroup{}
 	wg.Add(2)
 	go startBlockingHttpServer(&wg, &authDatabase, httpServerPort)
-	mqttClient := connectMqttClient(fmt.Sprintf("tcp://%s:%d", mqttHost, mqttPort), "sensor-manager", SystemTokenUsername, authDatabase.AdministratorAccessToken)
+	mqttClient := connectMqttClient(fmt.Sprintf("tcp://%s:%d", mqttHost, mqttPort), "sensor-manager", SuperuserUsername, authDatabase.AdministratorAccessToken)
 	go startMessageTransformations(&wg, &authDatabase, mqttClient)
 	wg.Wait()
 }
@@ -54,9 +54,10 @@ func main() {
 
 	mqttHost := getEnvMandatoryString("MQTT_HOST")
 	mqttPort := getEnvMandatoryInt("MQTT_PORT")
+	sensorDriverAccessToken := getEnvMandatoryString("SENSOR_DRIVER_ACCESS_TOKEN")
 
 	if *simulateSensor {
-		runSensorSimulator(mqttHost, uint16(mqttPort))
+		runSensorSimulator(mqttHost, uint16(mqttPort), sensorDriverAccessToken)
 	} else {
 		httpServerPort := getEnvMandatoryInt("HTTP_PORT")
 		authDatabaseFilename := getEnvMandatoryString("AUTH_DB_FILE")
@@ -64,7 +65,7 @@ func main() {
 		applicationSecret := getEnvMandatoryString("APPLICATION_SECRET")
 
 		rand.Seed(int64(crc64.Checksum([]byte(applicationSecret), crc64.MakeTable(crc64.ECMA))))
-		authDatabase := loadOrCreateAuthDatabase(authDatabaseFilename, administratorAccessToken)
+		authDatabase := loadOrCreateAuthDatabase(authDatabaseFilename, administratorAccessToken, sensorDriverAccessToken)
 
 		runProduction(mqttHost, uint16(mqttPort), authDatabase, uint16(httpServerPort))
 	}

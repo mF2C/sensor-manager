@@ -12,7 +12,8 @@ import (
 	"strings"
 )
 
-const SystemTokenUsername = "system"
+const SuperuserUsername = "system"
+const SensorDriverUsername = "sensor-driver"
 // should be a multiple of 8
 const GeneratedTokenLengthBytes = 32
 
@@ -32,9 +33,11 @@ type AuthDatabase struct {
 	Topics map[string]SensorTopic
 	// authenticates system services, also a big ugly hack
 	AdministratorAccessToken string
+	// authenticates sensor drivers, also a big ugly hack
+	SensorDriverAccessToken string
 }
 
-func loadOrCreateAuthDatabase(filename string, administratorAccessToken string) AuthDatabase {
+func loadOrCreateAuthDatabase(filename string, administratorAccessToken string, sensorDriverAccessToken string) AuthDatabase {
 	contents, err := ioutil.ReadFile(filename)
 	if err != nil {
 		log.Printf("Reading auth database file %s failed, creating anew.", filename)
@@ -42,6 +45,7 @@ func loadOrCreateAuthDatabase(filename string, administratorAccessToken string) 
 			Filename:                 filename,
 			Topics:                   map[string]SensorTopic{},
 			AdministratorAccessToken: administratorAccessToken,
+			SensorDriverAccessToken: sensorDriverAccessToken,
 		}
 		err = os.MkdirAll(path.Dir(filename), 0776)
 		if err != nil {
@@ -60,6 +64,8 @@ func loadOrCreateAuthDatabase(filename string, administratorAccessToken string) 
 	}
 	// always overwrite
 	unmarshaled.AdministratorAccessToken = administratorAccessToken
+	unmarshaled.SensorDriverAccessToken = sensorDriverAccessToken
+	unmarshaled.writeToFile()
 	return unmarshaled
 }
 
@@ -130,7 +136,7 @@ func (db AuthDatabase) getTopicForSensor(sensorId string) (topicName string, err
 
 // if any credential matches, the user is authenticated
 func (db AuthDatabase) isAuthenticated(username string, password string) bool {
-	if db.isSuperuser(username, password) {
+	if db.isSuperuser(username, password) || db.isSensorDriver(username, password) {
 		return true
 	}
 	for _, dbTopic := range db.Topics {
@@ -144,6 +150,9 @@ func (db AuthDatabase) isAuthenticated(username string, password string) bool {
 // if the (username, topic) tuple exists
 // authentication with the password is done in isAuthenticated
 func (db AuthDatabase) isAuthorized(username string, topic string) bool {
+	if username == SensorDriverUsername && topic == TopicSensorReceive {
+		return true
+	}
 	for _, dbTopic := range db.Topics {
 		if dbTopic.Name == topic && dbTopic.Username == username {
 			return true
@@ -153,5 +162,9 @@ func (db AuthDatabase) isAuthorized(username string, topic string) bool {
 }
 
 func (db AuthDatabase) isSuperuser(username string, password string) bool {
-	return username == SystemTokenUsername && password == db.AdministratorAccessToken
+	return username == SuperuserUsername && password == db.AdministratorAccessToken
+}
+
+func (db AuthDatabase) isSensorDriver(username string, password string) bool {
+	return username == SensorDriverUsername && password == db.SensorDriverAccessToken
 }
