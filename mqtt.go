@@ -38,7 +38,9 @@ func connectMqttClient(address string, clientId string, username string, passwor
 		log.Printf("client %s got: %s -> %s", clientId, msg.Topic(), msg.Payload())
 	}
 
-	mqttClientOptions := mqtt.NewClientOptions().AddBroker(address).SetClientID(clientId)
+	mqttClientOptions := mqtt.NewClientOptions()
+	mqttClientOptions.AddBroker(address)
+	mqttClientOptions.SetClientID(clientId)
 	mqttClientOptions.SetKeepAlive(2 * time.Second)
 	mqttClientOptions.SetDefaultPublishHandler(defaultMessageHandler)
 	mqttClientOptions.SetPingTimeout(1 * time.Second)

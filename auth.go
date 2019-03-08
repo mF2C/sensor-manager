@@ -15,6 +15,7 @@ import (
 
 const SuperuserUsername = "system"
 const SensorDriverUsername = "sensor-driver"
+
 // should be a multiple of 8
 const GeneratedTokenLengthBytes = 32
 
@@ -46,7 +47,7 @@ func loadOrCreateAuthDatabase(filename string, administratorAccessToken string, 
 			Filename:                 filename,
 			Topics:                   map[string]SensorTopic{},
 			AdministratorAccessToken: administratorAccessToken,
-			SensorDriverAccessToken: sensorDriverAccessToken,
+			SensorDriverAccessToken:  sensorDriverAccessToken,
 		}
 		err = os.MkdirAll(path.Dir(filename), 0776)
 		if err != nil {
@@ -154,8 +155,9 @@ func (db AuthDatabase) isAuthenticated(username string, password string) bool {
 
 // if the (username, topic) tuple exists
 // authentication with the password is done in isAuthenticated
+// the password is not available here, as this is only called when authentication passes
 func (db AuthDatabase) isAuthorized(username string, topic string) bool {
-	if constantTimeStringEqual(username, SensorDriverUsername) && constantTimeStringEqual(topic, TopicSensorReceive) {
+	if constantTimeStringEqual(username, SuperuserUsername) && (constantTimeStringEqual(username, SensorDriverUsername) && constantTimeStringEqual(topic, TopicSensorReceive)) {
 		return true
 	}
 	for _, dbTopic := range db.Topics {
