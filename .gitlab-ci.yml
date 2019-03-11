@@ -13,11 +13,13 @@ job-compile-x86_64:
   image: golang:1.12.0-alpine3.9
   script:
     - apk add git
-    - go build -o mf2c-sensor-manager mf2c-sensor-manager
+    - mkdir -p bin
+    - cd src
+    - go build -o ../bin/mf2c-sensor-manager mf2c-sensor-manager
   artifacts:
     name: "$CI_PROJECT_NAME-$CI_COMMIT_SHORT_SHA-x86_64"
     paths:
-      - mf2c-sensor-manager
+      - bin/mf2c-sensor-manager
   variables:
     GOARCH: amd64
     GOOS: linux
@@ -27,11 +29,13 @@ job-compile-armhf:
   image: golang:1.12.0-alpine3.9
   script:
     - apk add git
-    - go build -o mf2c-sensor-manager mf2c-sensor-manager
+    - mkdir -p bin
+    - cd src
+    - go build -o ../bin/mf2c-sensor-manager mf2c-sensor-manager
   artifacts:
     name: "$CI_PROJECT_NAME-$CI_COMMIT_SHORT_SHA-armhf"
     paths:
-      - mf2c-sensor-manager
+      - bin/mf2c-sensor-manager
   variables:
     GOARCH: arm
     GOOS: linux

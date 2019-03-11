@@ -1,3 +1,4 @@
 .idea/
 *.iml
 authdb.json
+bin/
