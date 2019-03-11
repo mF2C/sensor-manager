@@ -114,7 +114,7 @@ func (db AuthDatabase) writeToFile() {
 }
 
 func (db AuthDatabase) addSensorTopic(sensorId string, quantity string) (topicName string, err error) {
-	if _, ok := db.Topics[sensorId]; !ok {
+	if _, ok := db.Topics[sensorId]; ok {
 		return "", fmt.Errorf("sensor ID already exists: %s", sensorId)
 	}
 	username, password := generateUsernamePassword()
