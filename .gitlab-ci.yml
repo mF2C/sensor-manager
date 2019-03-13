@@ -1,6 +1,9 @@
 variables:
   GIT_SUBMODULE_STRATEGY: normal
   MOSQUITTO_IMAGE: $CI_REGISTRY_IMAGE/mosquitto
+  # required CI env input: DOCKER_HUB_USERNAME, DOCKER_HUB_PASSWORD
+  DOCKER_HUB_IMAGE: mf2c/sensor-manager
+  DOCKER_HUB_IMAGE_MOSQUITTO: mf2c/sensor-manager-mosquitto
 
 stages:
   - compile
@@ -105,7 +108,7 @@ docker-image-armhf-mosquitto:
   tags:
     - armv7l
 
-publish-crossplatform:
+publish-crossplatform-gitlab:
   stage: publish
   image: docker:stable
   script:
@@ -125,6 +128,45 @@ publish-crossplatform:
     # push all the images together
     - docker manifest push $CI_REGISTRY_IMAGE:latest
     - docker manifest push $MOSQUITTO_IMAGE:latest
+  variables:
+    DOCKER_HOST: tcp://docker:2375/
+  services:
+    - docker:stable-dind
+  only:
+    - /^master$/
+
+publish-crossplatform-dockerhub:
+  stage: publish
+  image: docker:stable
+  script:
+    - docker login -u $DOCKER_HUB_USERNAME -p $DOCKER_HUB_PASSWORD
+    - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN $CI_REGISTRY
+    # enable experimental features for the manifest
+    - apk add jq
+    - "jq '. + {experimental: \"enabled\"}' ~/.docker/config.json > ~/.docker/config.json.temp"
+    - mv ~/.docker/config.json.temp ~/.docker/config.json
+    # pull, tag local, push and create a list (manifest) of all images
+    - docker pull $CI_REGISTRY_IMAGE:latest-x86_64
+    - docker pull $CI_REGISTRY_IMAGE:latest-armhf
+    - docker tag $CI_REGISTRY_IMAGE:latest-x86_64 $DOCKER_HUB_IMAGE:latest-x86_64
+    - docker tag $CI_REGISTRY_IMAGE:latest-armhf $DOCKER_HUB_IMAGE:latest-armhf
+    - docker push $DOCKER_HUB_IMAGE:latest-x86_64
+    - docker push $DOCKER_HUB_IMAGE:latest-armhf
+    - docker manifest create $DOCKER_HUB_IMAGE:latest $DOCKER_HUB_IMAGE:latest-x86_64 $DOCKER_HUB_IMAGE:latest-armhf
+    - docker manifest annotate $DOCKER_HUB_IMAGE:latest $DOCKER_HUB_IMAGE:latest-x86_64 --arch amd64
+    - docker manifest annotate $DOCKER_HUB_IMAGE:latest $DOCKER_HUB_IMAGE:latest-armhf --arch arm
+    - docker manifest push $DOCKER_HUB_IMAGE:latest
+    # repeat for mosquitto
+    - docker pull $MOSQUITTO_IMAGE:latest-x86_64
+    - docker pull $MOSQUITTO_IMAGE:latest-armhf
+    - docker tag $MOSQUITTO_IMAGE:latest-x86_64 $DOCKER_HUB_IMAGE_MOSQUITTO:latest-x86_64
+    - docker tag $MOSQUITTO_IMAGE:latest-armhf $DOCKER_HUB_IMAGE_MOSQUITTO:latest-armhf
+    - docker push $DOCKER_HUB_IMAGE_MOSQUITTO:latest-x86_64
+    - docker push $DOCKER_HUB_IMAGE_MOSQUITTO:latest-armhf
+    - docker manifest create $DOCKER_HUB_IMAGE_MOSQUITTO:latest $DOCKER_HUB_IMAGE_MOSQUITTO:latest-x86_64 $DOCKER_HUB_IMAGE_MOSQUITTO:latest-armhf
+    - docker manifest annotate $DOCKER_HUB_IMAGE_MOSQUITTO:latest $DOCKER_HUB_IMAGE_MOSQUITTO:latest-x86_64 --arch amd64
+    - docker manifest annotate $DOCKER_HUB_IMAGE_MOSQUITTO:latest $DOCKER_HUB_IMAGE_MOSQUITTO:latest-armhf --arch arm
+    - docker manifest push $DOCKER_HUB_IMAGE_MOSQUITTO:latest
   variables:
     DOCKER_HOST: tcp://docker:2375/
   services:
