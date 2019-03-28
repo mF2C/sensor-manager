@@ -113,7 +113,7 @@ type CimiUser struct {
 	ActiveSince  string         `json:"activeSince"`
 	LastExecute  string         `json:"last_Execute"`
 	Deleted      bool           `json:"deleted"`
-	Password     bool           `json:"password"`
+	Password     string         `json:"password"`
 	Method       string         `json:"method"`
 	Updated      string         `json:"updated"`
 	EmailAddress string         `json:"emailAddress"`
@@ -121,7 +121,7 @@ type CimiUser struct {
 	Created      string         `json:"created"`
 	State        string         `json:"state"`
 	LastOnline   string         `json:"lastOnline"`
-	IsSuperuser  string         `json:"isSuperuser"`
+	IsSuperuser  bool           `json:"isSuperuser"`
 }
 
 type CimiUserList struct {
@@ -154,20 +154,20 @@ type CimiService struct {
 	ExecType  string `json:"exec_type"`
 	AgentType string `json:"agent_type"`
 	// optional
-	Description       string   `json:"description"`
-	ExecPorts         []uint16 `json:"exec_ports"`
-	NumAgents         uint     `json:"num_agents"`
-	CpuArch           string   `json:"cpu_arch"`
-	Os                string   `json:"os"`
-	MemoryMin         uint64   `json:"memory_min"`
-	StorageMin        uint64   `json:"storage_min"`
-	Disk              uint64   `json:"disk"`
-	RequiredResources []string `json:"req_resource"`
-	OptionalResources []string `json:"opt_resource"`
+	Description       string   `json:"description,omitempty"`
+	ExecPorts         []uint16 `json:"exec_ports,omitempty"`
+	NumAgents         uint     `json:"num_agents,omitempty"`
+	CpuArch           string   `json:"cpu_arch,omitempty"`
+	Os                string   `json:"os,omitempty"`
+	MemoryMin         uint64   `json:"memory_min,omitempty"`
+	StorageMin        uint64   `json:"storage_min,omitempty"`
+	Disk              uint64   `json:"disk,omitempty"`
+	RequiredResources []string `json:"req_resource,omitempty"`
+	OptionalResources []string `json:"opt_resource,omitempty"`
 	// others
-	Created  string `json:"created"`
-	Updated  string `json:"updated"`
-	Category int    `json:"category"`
+	Created  string `json:"created,omitempty"`
+	Updated  string `json:"updated,omitempty"`
+	Category int    `json:"category,omitempty"`
 }
 
 // parsed from GET /api/service
@@ -223,13 +223,13 @@ type CimiServiceInstance struct {
 	Status    string         `json:"status"`
 	Agents    []CimiAgent    `json:"agents"`
 	// other data
-	ParentDeviceId CimiIdentifier `json:"parent_device_id"`
-	ParentDeviceIp string         `json:"parent_device_ip"`
-	Updated        string         `json:"updated"`
-	Created        string         `json:"created"`
-	DeviceId       string         `json:"device_id"`
-	DeviceIp       string         `json:"device_ip"`
-	ServiceType    string         `json:"service_type"`
+	ParentDeviceId CimiIdentifier `json:"parent_device_id,omitempty"`
+	ParentDeviceIp string         `json:"parent_device_ip,omitempty"`
+	Updated        string         `json:"updated,omitempty"`
+	Created        string         `json:"created,omitempty"`
+	DeviceId       string         `json:"device_id,omitempty"`
+	DeviceIp       string         `json:"device_ip,omitempty"`
+	ServiceType    string         `json:"service_type,omitempty"`
 }
 
 type CimiServiceInstanceList struct {
@@ -283,7 +283,7 @@ func getCimiUser(connectionParams Mf2cConnectionParameters, username string) (*C
 	var parsedResponse CimiUserList
 	err := connectionParams.getUnmarshal("/api/user", &parsedResponse)
 	if err != nil {
-		return nil, nil
+		return nil, err
 	}
 	for _, cu := range parsedResponse.Users {
 		if cu.Username == username {
@@ -307,16 +307,16 @@ func getSensorDriverService(connectionParams Mf2cConnectionParameters, container
 	return nil, nil
 }
 
-func getSensorDriverServiceInstance(connectionParams Mf2cConnectionParameters, container SensorDriverContainer) (*CimiServiceInstance, error) {
+func getSensorDriverServiceInstance(connectionParams Mf2cConnectionParameters, cimiService CimiService) (*CimiServiceInstance, error) {
 	var parsedResponse CimiServiceInstanceList
-	err := connectionParams.getUnmarshal("/api/service-instance", parsedResponse)
+	err := connectionParams.getUnmarshal("/api/service-instance", &parsedResponse)
 	if err != nil {
 		return nil, err
 	}
 
 	for _, csi := range parsedResponse.ServiceInstances {
-		if csi.Service == container.getCimiServiceIdentifier() {
-			return nil, nil
+		if csi.Service == cimiService.Id {
+			return &csi, nil
 		}
 	}
 	return nil, nil
@@ -344,7 +344,7 @@ func createSensorDriverService(connectionParams Mf2cConnectionParameters, contai
 }
 
 func startSensorDriverService(connectionParams Mf2cConnectionParameters, user CimiUser, service CimiService) error {
-	return connectionParams.post("/api/v2/lm/servicer", LifecycleServiceStartRequest{
+	return connectionParams.post("/api/v2/lm/service", LifecycleServiceStartRequest{
 		ServiceId:   service.Id,
 		UserId:      user.Id,
 		AgreementId: "this-is-not-needed-yet-right?",

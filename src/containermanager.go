@@ -24,17 +24,13 @@ func (receiver SensorDriverContainer) getCimiServiceName() string {
 	return fmt.Sprintf("sensor-driver-%s", receiver.SensorHardwareModel)
 }
 
-func (receiver SensorDriverContainer) getCimiServiceIdentifier() CimiIdentifier {
-	return CimiIdentifier(fmt.Sprintf("service/%s", receiver.getCimiServiceName()))
-}
-
 func getDriverContainerForSensor(sensor CimiSensor) (*SensorDriverContainer, error) {
 	// TODO: this is hardcoded, use a database
 	hwContainerMap := map[string]struct {
 		image   string
 		version string
 	}{
-		"DHT22": {"hello-world", "latest"},
+		"DHT22sim": {"hello-world", "latest"},
 	}
 
 	mapping, ok := hwContainerMap[sensor.HardwareModel]
@@ -93,23 +89,23 @@ func getOrCreateService(connectionParams Mf2cConnectionParameters, sensorDriverC
 	return cimiService, nil
 }
 
-func getOrCreateServiceInstance(connectionParams Mf2cConnectionParameters, sensorDriverContainer SensorDriverContainer, cimiUser CimiUser, cimiService CimiService) (*CimiServiceInstance, error) {
-	cimiServiceInstance, err := getSensorDriverServiceInstance(connectionParams, sensorDriverContainer)
+func getOrCreateServiceInstance(cimiConnectionParams Mf2cConnectionParameters, lifecycleConnectionParams Mf2cConnectionParameters, cimiUser CimiUser, cimiService CimiService) (*CimiServiceInstance, error) {
+	cimiServiceInstance, err := getSensorDriverServiceInstance(cimiConnectionParams, cimiService)
 	if err != nil {
 		return nil, err
 	}
 	if cimiServiceInstance == nil {
-		log.Printf("Service instance for %s does not exist, creating.", sensorDriverContainer.SensorHardwareModel)
-		err = startSensorDriverService(connectionParams, cimiUser, cimiService)
+		log.Printf("Service instance for %s does not exist, creating.", cimiService.Name)
+		err = startSensorDriverService(lifecycleConnectionParams, cimiUser, cimiService)
 		if err != nil {
 			return nil, err
 		}
-		cimiServiceInstance, err := getSensorDriverServiceInstance(connectionParams, sensorDriverContainer)
+		cimiServiceInstance, err := getSensorDriverServiceInstance(cimiConnectionParams, cimiService)
 		if err != nil {
 			return nil, err
 		}
 		if cimiServiceInstance == nil {
-			return nil, fmt.Errorf("started a CIMI service instance for %s but it was not present on lookup", sensorDriverContainer.SensorHardwareModel)
+			return nil, fmt.Errorf("started a CIMI service instance for service %s but it was not present on lookup", cimiService.Name)
 		}
 	}
 	return cimiServiceInstance, nil
@@ -151,6 +147,7 @@ func startContainerManager(wg *sync.WaitGroup, cimiTraefikHost string, cimiTraef
 		for _, s := range sensors {
 			_, present := knownSensors[s.HardwareModel]
 			if !present {
+				knownSensors[s.HardwareModel] = s
 				log.Printf("Adding a new sensor container: %s", s.HardwareModel)
 				sensorDriverContainer, err := getDriverContainerForSensor(s)
 				if err != nil {
@@ -162,7 +159,7 @@ func startContainerManager(wg *sync.WaitGroup, cimiTraefikHost string, cimiTraef
 					panic(err)
 				}
 				log.Printf("Ensuring the service instance for %s exists.", s.HardwareModel)
-				_, err = getOrCreateServiceInstance(lifecycleConnectionParams, *sensorDriverContainer, *cimiUser, *cimiService)
+				_, err = getOrCreateServiceInstance(cimiConnectionParams, lifecycleConnectionParams, *cimiUser, *cimiService)
 				if err != nil {
 					panic(err)
 				}

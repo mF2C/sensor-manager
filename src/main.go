@@ -23,9 +23,9 @@ func runProduction(mqttHost string, mqttPort uint16, cimiTraefikHost string, cim
 	// the server needs to start beforehand, as message transformations connect to MQTT and thus require auth
 	wg := sync.WaitGroup{}
 	wg.Add(3)
-	go startBlockingHttpServer(&wg, &authDatabase, httpServerPort)
-	mqttClient := connectMqttClient(fmt.Sprintf("tcp://%s:%d", mqttHost, mqttPort), "sensor-manager", SuperuserUsername, authDatabase.AdministratorAccessToken)
-	go startMessageTransformations(&wg, &authDatabase, mqttClient)
+	//go startBlockingHttpServer(&wg, &authDatabase, httpServerPort)
+	//mqttClient := connectMqttClient(fmt.Sprintf("tcp://%s:%d", mqttHost, mqttPort), "sensor-manager", SuperuserUsername, authDatabase.AdministratorAccessToken)
+	//go startMessageTransformations(&wg, &authDatabase, mqttClient)
 	go startContainerManager(&wg, cimiTraefikHost, cimiTraefikPort, lifecycleHost, lifecyclePort, &authDatabase)
 	wg.Wait()
 }
