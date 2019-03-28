@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -37,7 +38,15 @@ func (receiver Mf2cConnectionParameters) buildUrl(endpoint string) string {
 }
 
 func (receiver Mf2cConnectionParameters) execute(method string, endpoint string, body io.Reader) (*http.Response, error) {
-	client := &http.Client{}
+	tlsConfig := tls.Config{
+		InsecureSkipVerify: true,
+	}
+	transport := http.Transport{
+		TLSClientConfig: &tlsConfig,
+	}
+	client := &http.Client{
+		Transport: &transport,
+	}
 	req, err := http.NewRequest(method, receiver.buildUrl(endpoint), body)
 	if err != nil {
 		return nil, err
