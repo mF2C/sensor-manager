@@ -111,11 +111,10 @@ func getOrCreateServiceInstance(cimiConnectionParams Mf2cConnectionParameters, l
 	return cimiServiceInstance, nil
 }
 
-func startContainerManager(wg *sync.WaitGroup, cimiTraefikHost string, cimiTraefikPort uint16, lifecycleHost string, lifecyclePort uint16, authDb *AuthDatabase) {
+func startContainerManager(wg *sync.WaitGroup, cimiTraefikHost string, cimiTraefikPort uint16, lifecycleHost string, lifecyclePort uint16, authDb *AuthDatabase, sensorCheckIntervalSeconds uint) {
 	defer wg.Done()
 	log.Println("Starting container manager.")
 
-	// TODO: envvar these
 	cimiConnectionParams := Mf2cConnectionParameters{
 		Host:     cimiTraefikHost,
 		Port:     cimiTraefikPort,
@@ -166,6 +165,6 @@ func startContainerManager(wg *sync.WaitGroup, cimiTraefikHost string, cimiTraef
 			}
 		}
 
-		time.Sleep(SensorCheckIntervalSeconds * time.Second)
+		time.Sleep(time.Duration(sensorCheckIntervalSeconds) * time.Second)
 	}
 }

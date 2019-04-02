@@ -18,15 +18,15 @@ func runSensorSimulator(mqttHost string, mqttPort uint16, sensorDriverPassword s
 	publishMessagesIndefinitely(mqttClient, TopicSensorReceive, 1*time.Second)
 }
 
-func runProduction(mqttHost string, mqttPort uint16, cimiTraefikHost string, cimiTraefikPort uint16, lifecycleHost string, lifecyclePort uint16, authDatabase AuthDatabase, httpServerPort uint16) {
+func runProduction(mqttHost string, mqttPort uint16, cimiTraefikHost string, cimiTraefikPort uint16, lifecycleHost string, lifecyclePort uint16, authDatabase AuthDatabase, httpServerPort uint16, sensorCheckIntervalSeconds uint) {
 	log.Println("Starting in production mode.")
 	// the server needs to start beforehand, as message transformations connect to MQTT and thus require auth
 	wg := sync.WaitGroup{}
 	wg.Add(3)
-	//go startBlockingHttpServer(&wg, &authDatabase, httpServerPort)
-	//mqttClient := connectMqttClient(fmt.Sprintf("tcp://%s:%d", mqttHost, mqttPort), "sensor-manager", SuperuserUsername, authDatabase.AdministratorAccessToken)
-	//go startMessageTransformations(&wg, &authDatabase, mqttClient)
-	go startContainerManager(&wg, cimiTraefikHost, cimiTraefikPort, lifecycleHost, lifecyclePort, &authDatabase)
+	go startBlockingHttpServer(&wg, &authDatabase, httpServerPort)
+	mqttClient := connectMqttClient(fmt.Sprintf("tcp://%s:%d", mqttHost, mqttPort), "sensor-manager", SuperuserUsername, authDatabase.AdministratorAccessToken)
+	go startMessageTransformations(&wg, &authDatabase, mqttClient)
+	go startContainerManager(&wg, cimiTraefikHost, cimiTraefikPort, lifecycleHost, lifecyclePort, &authDatabase, sensorCheckIntervalSeconds)
 	wg.Wait()
 }
 
@@ -68,10 +68,11 @@ func main() {
 		cimiPort := getEnvMandatoryInt("CIMI_PORT")
 		lifecycleHost := getEnvMandatoryString("LIFECYCLE_HOST")
 		lifecyclePort := getEnvMandatoryInt("LIFECYCLE_PORT")
+		sensorsCheckIntervalSeconds := getEnvMandatoryInt("SENSORS_CHECK_INTERVAL_SECONDS")
 
 		rand.Seed(int64(crc64.Checksum([]byte(applicationSecret), crc64.MakeTable(crc64.ECMA))))
 		authDatabase := loadOrCreateAuthDatabase(authDatabaseFilename, administratorAccessToken, sensorDriverAccessToken)
 
-		runProduction(mqttHost, uint16(mqttPort), cimiHost, uint16(cimiPort), lifecycleHost, uint16(lifecyclePort), authDatabase, uint16(httpServerPort))
+		runProduction(mqttHost, uint16(mqttPort), cimiHost, uint16(cimiPort), lifecycleHost, uint16(lifecyclePort), authDatabase, uint16(httpServerPort), uint(sensorsCheckIntervalSeconds))
 	}
 }
