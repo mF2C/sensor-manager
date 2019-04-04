@@ -238,6 +238,29 @@ type CimiServiceInstanceList struct {
 	ServiceInstances []CimiServiceInstance `json:"serviceInstances"`
 }
 
+type CimiDeviceDynamic struct {
+	Device                      CimiHref `json:"device"`
+	RamFree                     float32  `json:"ramFree"`
+	RamFreePercent              float32  `json:"ramFreePercent"`
+	StorageFree                 float32  `json:"storageFree"`
+	StorageFreePercent          float32  `json:"storageFreePercent"`
+	PowerRemainingStatus        string   `json:"powerRemainingStatus"`
+	PowerRemainingStatusSeconds string   `json:"powerRemainingStatusSeconds"`
+	EthernetAddress             string   `json:"ethernetAddress"`
+	WifiAddress                 string   `json:"wifiAddress"`
+	EthernetThroughputInfo      []string `json:"ethernetThroughputInfo"`
+	WifiThroughputInfo          []string `json:"wifiThroughputInfo"`
+	SensorType                  []string `json:"sensorType"`
+	SensorModel                 []string `json:"sensorModel"`
+	SensorConnection            []string `json:"sensorConnection"`
+	MyLeaderId                  CimiHref `json:"myLeaderID"`
+}
+
+type CimiDeviceDynamicList struct {
+	Count          uint                `json:"count"`
+	DeviceDynamics []CimiDeviceDynamic `json:"deviceDynamics"`
+}
+
 type LifecycleServiceStartRequest struct {
 	ServiceId CimiIdentifier `json:"service_id"`
 	UserId    CimiIdentifier `json:"user_id"`
@@ -246,29 +269,43 @@ type LifecycleServiceStartRequest struct {
 }
 
 func getSensorsFromCimi(connectionParams Mf2cConnectionParameters) ([]CimiSensor, error) {
-	// TODO: mocks until cimi integration
-	const cimiSensorModel = `["hello-world-sensor"]`
-	const cimiSensorTypes = `[["temperature", "humidity"]]`
-	const cimiSensorConnection = `[{"gpioPin": 23, "simulated": true}]`
-
-	var parsedSensorModels []string
-	err := json.Unmarshal([]byte(cimiSensorModel), &parsedSensorModels)
-	if err != nil {
-		return nil, err
-	}
-	var parsedSensorTypes [][]string
-	err = json.Unmarshal([]byte(cimiSensorTypes), &parsedSensorTypes)
-	if err != nil {
-		return nil, err
-	}
-	var parsedSensorConnections []map[string]interface{}
-	err = json.Unmarshal([]byte(cimiSensorConnection), &parsedSensorConnections)
+	var parsedResponse CimiDeviceDynamicList
+	err := connectionParams.getUnmarshal("/api/device-dynamic", &parsedResponse)
 	if err != nil {
 		return nil, err
 	}
 
-	if len(parsedSensorModels) != len(parsedSensorTypes) || len(parsedSensorTypes) != len(parsedSensorConnections) {
-		return nil, fmt.Errorf("array lengths of sensor definitions do not match")
+	if len(parsedResponse.DeviceDynamics) == 0 {
+		return nil, fmt.Errorf("no device-dynamic resources exist")
+	}
+
+	// TODO: expand to multiple
+	if len(parsedResponse.DeviceDynamics) != 1 {
+		return nil, fmt.Errorf("more than one device-dynamic resource is not supported in this version, got: %d", len(parsedResponse.DeviceDynamics))
+	}
+
+	singleDeviceDynamic := parsedResponse.DeviceDynamics[0]
+	if len(singleDeviceDynamic.SensorModel) != len(singleDeviceDynamic.SensorType) || len(singleDeviceDynamic.SensorType) != len(singleDeviceDynamic.SensorConnection) {
+		return nil, fmt.Errorf("the lengths of sensor models, types and connections must match, got %d/%d/%d", len(singleDeviceDynamic.SensorModel), len(singleDeviceDynamic.SensorType), len(singleDeviceDynamic.SensorConnection))
+	}
+
+	// nothing to parse for this one
+	parsedSensorModels := singleDeviceDynamic.SensorModel
+
+	parsedSensorTypes := make([][]string, len(singleDeviceDynamic.SensorType))
+	for i, st := range singleDeviceDynamic.SensorType {
+		err = json.Unmarshal([]byte(st), &parsedSensorTypes[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	parsedSensorConnections := make([]map[string]interface{}, len(singleDeviceDynamic.SensorConnection))
+	for i, sc := range singleDeviceDynamic.SensorConnection {
+		err = json.Unmarshal([]byte(sc), &parsedSensorConnections[i])
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	result := make([]CimiSensor, len(parsedSensorModels))
