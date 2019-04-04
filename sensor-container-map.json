@@ -1,0 +1,6 @@
+{
+    "hello-world-sensor": {
+        "image": "hello-world",
+        "version": "latest"
+    }
+}

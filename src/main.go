@@ -18,7 +18,8 @@ func runSensorSimulator(mqttHost string, mqttPort uint16, sensorDriverPassword s
 	publishMessagesIndefinitely(mqttClient, TopicSensorReceive, 1*time.Second)
 }
 
-func runProduction(mqttHost string, mqttPort uint16, cimiTraefikHost string, cimiTraefikPort uint16, lifecycleHost string, lifecyclePort uint16, authDatabase AuthDatabase, httpServerPort uint16, sensorCheckIntervalSeconds uint) {
+func runProduction(mqttHost string, mqttPort uint16, cimiTraefikHost string, cimiTraefikPort uint16, lifecycleHost string, lifecyclePort uint16,
+	authDatabase AuthDatabase, httpServerPort uint16, sensorCheckIntervalSeconds uint, sensorContainerMapFilename string) {
 	log.Println("Starting in production mode.")
 	// the server needs to start beforehand, as message transformations connect to MQTT and thus require auth
 	wg := sync.WaitGroup{}
@@ -26,7 +27,7 @@ func runProduction(mqttHost string, mqttPort uint16, cimiTraefikHost string, cim
 	go startBlockingHttpServer(&wg, &authDatabase, httpServerPort)
 	mqttClient := connectMqttClient(fmt.Sprintf("tcp://%s:%d", mqttHost, mqttPort), "sensor-manager", SuperuserUsername, authDatabase.AdministratorAccessToken)
 	go startMessageTransformations(&wg, &authDatabase, mqttClient)
-	go startContainerManager(&wg, cimiTraefikHost, cimiTraefikPort, lifecycleHost, lifecyclePort, &authDatabase, sensorCheckIntervalSeconds)
+	go startContainerManager(&wg, cimiTraefikHost, cimiTraefikPort, lifecycleHost, lifecyclePort, &authDatabase, sensorCheckIntervalSeconds, sensorContainerMapFilename)
 	wg.Wait()
 }
 
@@ -69,10 +70,11 @@ func main() {
 		lifecycleHost := getEnvMandatoryString("LIFECYCLE_HOST")
 		lifecyclePort := getEnvMandatoryInt("LIFECYCLE_PORT")
 		sensorsCheckIntervalSeconds := getEnvMandatoryInt("SENSORS_CHECK_INTERVAL_SECONDS")
+		sensorContainerMapFilename := getEnvMandatoryString("SENSOR_CONTAINER_MAP_FILE")
 
 		rand.Seed(int64(crc64.Checksum([]byte(applicationSecret), crc64.MakeTable(crc64.ECMA))))
 		authDatabase := loadOrCreateAuthDatabase(authDatabaseFilename, administratorAccessToken, sensorDriverAccessToken)
 
-		runProduction(mqttHost, uint16(mqttPort), cimiHost, uint16(cimiPort), lifecycleHost, uint16(lifecyclePort), authDatabase, uint16(httpServerPort), uint(sensorsCheckIntervalSeconds))
+		runProduction(mqttHost, uint16(mqttPort), cimiHost, uint16(cimiPort), lifecycleHost, uint16(lifecyclePort), authDatabase, uint16(httpServerPort), uint(sensorsCheckIntervalSeconds), sensorContainerMapFilename)
 	}
 }

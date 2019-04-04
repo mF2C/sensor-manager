@@ -1,7 +1,9 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"os"
 	"sync"
@@ -10,9 +12,6 @@ import (
 
 const CimiUsername = "sensor-manager-user"
 const CimiPassword = "sensor-manager-password"
-
-// # TODO envvar this interval
-const SensorCheckIntervalSeconds = 5
 
 type SensorDriverContainer struct {
 	SensorHardwareModel string
@@ -24,13 +23,20 @@ func (receiver SensorDriverContainer) getCimiServiceName() string {
 	return fmt.Sprintf("sensor-driver-%s", receiver.SensorHardwareModel)
 }
 
-func getDriverContainerForSensor(sensor CimiSensor) (*SensorDriverContainer, error) {
-	// TODO: this is hardcoded, use a database
+// reads a mapping file (json) for mappings; the whole file is reread each time to allow on-the-fly updates
+func getDriverContainerForSensor(sensorContainerMapFilename string, sensor CimiSensor) (*SensorDriverContainer, error) {
 	hwContainerMap := map[string]struct {
 		image   string
 		version string
-	}{
-		"DHT22sim": {"hello-world", "latest"},
+	}{}
+
+	contents, err := ioutil.ReadFile(sensorContainerMapFilename)
+	if err != nil {
+		return nil, err
+	}
+	err = json.Unmarshal(contents, &hwContainerMap)
+	if err != nil {
+		return nil, err
 	}
 
 	mapping, ok := hwContainerMap[sensor.HardwareModel]
@@ -111,7 +117,8 @@ func getOrCreateServiceInstance(cimiConnectionParams Mf2cConnectionParameters, l
 	return cimiServiceInstance, nil
 }
 
-func startContainerManager(wg *sync.WaitGroup, cimiTraefikHost string, cimiTraefikPort uint16, lifecycleHost string, lifecyclePort uint16, authDb *AuthDatabase, sensorCheckIntervalSeconds uint) {
+func startContainerManager(wg *sync.WaitGroup, cimiTraefikHost string, cimiTraefikPort uint16, lifecycleHost string, lifecyclePort uint16,
+	authDb *AuthDatabase, sensorCheckIntervalSeconds uint, sensorContainerMapFilename string) {
 	defer wg.Done()
 	log.Println("Starting container manager.")
 
@@ -129,7 +136,7 @@ func startContainerManager(wg *sync.WaitGroup, cimiTraefikHost string, cimiTraef
 		Host:     lifecycleHost,
 		Port:     lifecyclePort,
 		Protocol: "http",
-		Headers: LifecycleAdditionalHeaders,
+		Headers:  LifecycleAdditionalHeaders,
 	}
 
 	cimiUser, err := getOrCreateUser(cimiConnectionParams)
@@ -148,7 +155,7 @@ func startContainerManager(wg *sync.WaitGroup, cimiTraefikHost string, cimiTraef
 			if !present {
 				knownSensors[s.HardwareModel] = s
 				log.Printf("Adding a new sensor container: %s", s.HardwareModel)
-				sensorDriverContainer, err := getDriverContainerForSensor(s)
+				sensorDriverContainer, err := getDriverContainerForSensor(sensorContainerMapFilename, s)
 				if err != nil {
 					panic(err)
 				}

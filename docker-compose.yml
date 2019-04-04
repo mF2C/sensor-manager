@@ -26,3 +26,4 @@ services:
       - "SENSOR_DRIVER_ACCESS_TOKEN=thisisaverysecuresensordrivertokenplsnocrack"
       - "APPLICATION_SECRET=thisisaverysecureapplicationsecretplsnocrack"
       - "SENSORS_CHECK_INTERVAL_SECONDS=5"
+      - "SENSOR_CONTAINER_MAP_FILE=/data/sensor-container-map.json"

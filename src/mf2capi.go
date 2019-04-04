@@ -246,7 +246,7 @@ type LifecycleServiceStartRequest struct {
 
 func getSensorsFromCimi(connectionParams Mf2cConnectionParameters) ([]CimiSensor, error) {
 	// TODO: mocks until cimi integration
-	const cimiSensorModel = `["DHT22sim"]`
+	const cimiSensorModel = `["hello-world-sensor"]`
 	const cimiSensorTypes = `[["temperature", "humidity"]]`
 	const cimiSensorConnection = `[{"gpioPin": 23, "simulated": true}]`
 
