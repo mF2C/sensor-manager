@@ -22,7 +22,7 @@ type IncomingSensorMessage struct {
 	Quantity string
 	// the timestamp in RFC 3339
 	Timestamp string
-	Value    float64
+	Value     float64
 	// the SI unit (deg. celsius, RH%, kg, etc), without SI prefixes (except kg, which is a base unit)
 	Unit string
 }
@@ -31,8 +31,8 @@ type IncomingSensorMessage struct {
 // e.g. not the sensor type, because this sensor's data has been requested
 type OutgoingClientMessage struct {
 	Timestamp string
-	Value float64
-	Unit  string
+	Value     float64
+	Unit      string
 }
 
 func connectMqttClient(address string, clientId string, username string, password string) mqtt.Client {
@@ -78,8 +78,8 @@ func validateIncomingMessage(incoming IncomingSensorMessage) bool {
 func transformMessage(incoming IncomingSensorMessage) OutgoingClientMessage {
 	return OutgoingClientMessage{
 		Timestamp: incoming.Timestamp,
-		Value: incoming.Value,
-		Unit:  incoming.Unit,
+		Value:     incoming.Value,
+		Unit:      incoming.Unit,
 	}
 }
 

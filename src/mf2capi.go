@@ -9,6 +9,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"strings"
+	"text/template"
 )
 
 // TODO: this will be removed. maybe.
@@ -333,12 +334,33 @@ func createCimiUser(connectionParams Mf2cConnectionParameters, username string, 
 	return connectionParams.post("/api/user", &req)
 }
 
+// accepts a SensorDriverContainer as the dot
+const DockerComposeTemplate = `
+version: "3.5"
+services:
+  sensor-driver:
+    image: {{.DockerImagePath}}/{{.DockerImageVersion}}
+    environment:
+{{range .Environment}}
+      - "{{.Key}}={{.Value}}"
+{{end}}
+`
+
 func createSensorDriverService(connectionParams Mf2cConnectionParameters, container SensorDriverContainer) error {
-	// TODO: pass envvars, probably through docker-compose vars (will need to host a server for lifecycle)
+	tpl, err := template.New("docker-compose").Parse(DockerComposeTemplate)
+	if err != nil {
+		return err
+	}
+	buffer := bytes.Buffer{}
+	err = tpl.Execute(&buffer, container)
+	if err != nil {
+		return err
+	}
+
 	return connectionParams.post("/api/service", CimiService{
 		Name:      container.getCimiServiceName(),
-		Exec:      fmt.Sprintf("%s:%s", container.DockerImagePath, container.DockerImageVersion),
-		ExecType:  "docker",
+		Exec:      "data:application/x-yaml," + buffer.String(),
+		ExecType:  "docker-compose",
 		AgentType: "normal",
 	})
 }

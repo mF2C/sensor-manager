@@ -27,7 +27,7 @@ func runProduction(mqttHost string, mqttPort uint16, cimiTraefikHost string, cim
 	go startBlockingHttpServer(&wg, &authDatabase, httpServerPort)
 	mqttClient := connectMqttClient(fmt.Sprintf("tcp://%s:%d", mqttHost, mqttPort), "sensor-manager", SuperuserUsername, authDatabase.AdministratorAccessToken)
 	go startMessageTransformations(&wg, &authDatabase, mqttClient)
-	go startContainerManager(&wg, cimiTraefikHost, cimiTraefikPort, lifecycleHost, lifecyclePort, &authDatabase, sensorCheckIntervalSeconds, sensorContainerMapFilename)
+	go startContainerManager(&wg, cimiTraefikHost, cimiTraefikPort, lifecycleHost, lifecyclePort, mqttHost, mqttPort, &authDatabase, sensorCheckIntervalSeconds, sensorContainerMapFilename)
 	wg.Wait()
 }
 

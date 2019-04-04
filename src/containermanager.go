@@ -17,6 +17,11 @@ type SensorDriverContainer struct {
 	SensorHardwareModel string
 	DockerImagePath     string
 	DockerImageVersion  string
+	// contains SENSOR_MANAGER_ and SENSOR_ vars
+	Environment []struct {
+		Key   string
+		Value string
+	}
 }
 
 func (receiver SensorDriverContainer) getCimiServiceName() string {
@@ -24,7 +29,7 @@ func (receiver SensorDriverContainer) getCimiServiceName() string {
 }
 
 // reads a mapping file (json) for mappings; the whole file is reread each time to allow on-the-fly updates
-func getDriverContainerForSensor(sensorContainerMapFilename string, sensor CimiSensor) (*SensorDriverContainer, error) {
+func getDriverContainerForSensor(sensorContainerMapFilename string, sensor CimiSensor, authDb *AuthDatabase, mqttHost string, mqttPort uint16) (*SensorDriverContainer, error) {
 	hwContainerMap := map[string]struct {
 		image   string
 		version string
@@ -43,10 +48,28 @@ func getDriverContainerForSensor(sensorContainerMapFilename string, sensor CimiS
 	if !ok {
 		return nil, fmt.Errorf("no sensor driver container mapping for sensor %s", sensor.HardwareModel)
 	}
+
+	connectionParamsJson, err := json.Marshal(sensor.ConnectionParameters)
+	if err != nil {
+		return nil, err
+	}
+	env := []struct {
+		Key   string
+		Value string
+	}{
+		{"SENSOR_MANAGER_HOST", mqttHost},
+		{"SENSOR_MANAGER_PORT", fmt.Sprintf("%d", mqttPort)},
+		{"SENSOR_MANAGER_USERNAME", SensorDriverUsername},
+		{"SENSOR_MANAGER_PASSWORD", authDb.SensorDriverAccessToken},
+		{"SENSOR_MANAGER_TOPIC", TopicSensorReceive},
+		{"SENSOR_CONNECTION_INFO", string(connectionParamsJson)},
+	}
+
 	return &SensorDriverContainer{
 		SensorHardwareModel: sensor.HardwareModel,
 		DockerImagePath:     mapping.image,
 		DockerImageVersion:  mapping.version,
+		Environment:         env,
 	}, nil
 }
 
@@ -118,7 +141,7 @@ func getOrCreateServiceInstance(cimiConnectionParams Mf2cConnectionParameters, l
 }
 
 func startContainerManager(wg *sync.WaitGroup, cimiTraefikHost string, cimiTraefikPort uint16, lifecycleHost string, lifecyclePort uint16,
-	authDb *AuthDatabase, sensorCheckIntervalSeconds uint, sensorContainerMapFilename string) {
+	mqttHost string, mqttPort uint16, authDb *AuthDatabase, sensorCheckIntervalSeconds uint, sensorContainerMapFilename string) {
 	defer wg.Done()
 	log.Println("Starting container manager.")
 
@@ -129,7 +152,9 @@ func startContainerManager(wg *sync.WaitGroup, cimiTraefikHost string, cimiTraef
 		Headers: append([]struct {
 			Key   string
 			Value string
-		}{{Key: CimiAuthenticationHeaderKey, Value: CimiAuthenticationBypassValue}}, CimiAdditionalHeaders...),
+		}{
+			{Key: CimiAuthenticationHeaderKey, Value: CimiAuthenticationBypassValue},
+		}, CimiAdditionalHeaders...),
 	}
 
 	lifecycleConnectionParams := Mf2cConnectionParameters{
@@ -155,7 +180,7 @@ func startContainerManager(wg *sync.WaitGroup, cimiTraefikHost string, cimiTraef
 			if !present {
 				knownSensors[s.HardwareModel] = s
 				log.Printf("Adding a new sensor container: %s", s.HardwareModel)
-				sensorDriverContainer, err := getDriverContainerForSensor(sensorContainerMapFilename, s)
+				sensorDriverContainer, err := getDriverContainerForSensor(sensorContainerMapFilename, s, authDb, mqttHost, mqttPort)
 				if err != nil {
 					panic(err)
 				}
