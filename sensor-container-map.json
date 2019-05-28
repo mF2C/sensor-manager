@@ -2,5 +2,9 @@
     "hello-world-sensor": {
         "image": "hello-world",
         "version": "latest"
+    },
+    "smartboat-bm": {
+        "image": "local/sensor-manager-example-driver",
+        "version": "latest"
     }
 }

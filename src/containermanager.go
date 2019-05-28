@@ -31,8 +31,8 @@ func (receiver SensorDriverContainer) getCimiServiceName() string {
 // reads a mapping file (json) for mappings; the whole file is reread each time to allow on-the-fly updates
 func getDriverContainerForSensor(sensorContainerMapFilename string, sensor CimiSensor, authDb *AuthDatabase, mqttHost string, mqttPort uint16) (*SensorDriverContainer, error) {
 	hwContainerMap := map[string]struct {
-		image   string
-		version string
+		Image   string `json:"image"`
+		Version string `json:"version"`
 	}{}
 
 	contents, err := ioutil.ReadFile(sensorContainerMapFilename)
@@ -67,8 +67,8 @@ func getDriverContainerForSensor(sensorContainerMapFilename string, sensor CimiS
 
 	return &SensorDriverContainer{
 		SensorHardwareModel: sensor.HardwareModel,
-		DockerImagePath:     mapping.image,
-		DockerImageVersion:  mapping.version,
+		DockerImagePath:     mapping.Image,
+		DockerImageVersion:  mapping.Version,
 		Environment:         env,
 	}, nil
 }

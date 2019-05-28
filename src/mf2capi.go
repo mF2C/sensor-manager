@@ -372,10 +372,10 @@ const DockerComposeTemplate = `
 version: "3.5"
 services:
   sensor-driver:
-    image: {{.DockerImagePath}}/{{.DockerImageVersion}}
+    image: {{.DockerImagePath}}:{{.DockerImageVersion}}
     environment:
 {{range .Environment}}
-      - "{{.Key}}={{.Value}}"
+      - '{{.Key}}={{.Value}}'
 {{end}}
 `
 
