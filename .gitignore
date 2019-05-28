@@ -2,3 +2,4 @@
 *.iml
 authdb.json
 bin/
+pkg/

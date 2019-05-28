@@ -239,26 +239,30 @@ type CimiServiceInstanceList struct {
 }
 
 type CimiDeviceDynamic struct {
-	Device                      CimiHref `json:"device"`
-	RamFree                     float32  `json:"ramFree"`
-	RamFreePercent              float32  `json:"ramFreePercent"`
-	StorageFree                 float32  `json:"storageFree"`
-	StorageFreePercent          float32  `json:"storageFreePercent"`
-	PowerRemainingStatus        string   `json:"powerRemainingStatus"`
-	PowerRemainingStatusSeconds string   `json:"powerRemainingStatusSeconds"`
-	EthernetAddress             string   `json:"ethernetAddress"`
-	WifiAddress                 string   `json:"wifiAddress"`
-	EthernetThroughputInfo      []string `json:"ethernetThroughputInfo"`
-	WifiThroughputInfo          []string `json:"wifiThroughputInfo"`
-	SensorType                  []string `json:"sensorType"`
-	SensorModel                 []string `json:"sensorModel"`
-	SensorConnection            []string `json:"sensorConnection"`
-	MyLeaderId                  CimiHref `json:"myLeaderID"`
+	Device                      CimiHref                  `json:"device"`
+	RamFree                     float32                   `json:"ramFree"`
+	RamFreePercent              float32                   `json:"ramFreePercent"`
+	StorageFree                 float32                   `json:"storageFree"`
+	StorageFreePercent          float32                   `json:"storageFreePercent"`
+	PowerRemainingStatus        string                    `json:"powerRemainingStatus"`
+	PowerRemainingStatusSeconds string                    `json:"powerRemainingStatusSeconds"`
+	EthernetAddress             string                    `json:"ethernetAddress"`
+	WifiAddress                 string                    `json:"wifiAddress"`
+	EthernetThroughputInfo      []string                  `json:"ethernetThroughputInfo"`
+	WifiThroughputInfo          []string                  `json:"wifiThroughputInfo"`
+	Sensors                     []CimiDeviceDynamicSensor `json:"sensors"`
+	MyLeaderId                  CimiHref                  `json:"myLeaderID"`
 }
 
 type CimiDeviceDynamicList struct {
 	Count          uint                `json:"count"`
 	DeviceDynamics []CimiDeviceDynamic `json:"deviceDynamics"`
+}
+
+type CimiDeviceDynamicSensor struct {
+	SensorType       string `json:"sensorType"`
+	SensorModel      string `json:"sensorModel"`
+	SensorConnection string `json:"sensorConnection"`
 }
 
 type LifecycleServiceStartRequest struct {
@@ -283,36 +287,28 @@ func getSensorsFromCimi(connectionParams Mf2cConnectionParameters) ([]CimiSensor
 	if len(parsedResponse.DeviceDynamics) != 1 {
 		return nil, fmt.Errorf("more than one device-dynamic resource is not supported in this version, got: %d", len(parsedResponse.DeviceDynamics))
 	}
-
 	singleDeviceDynamic := parsedResponse.DeviceDynamics[0]
-	if len(singleDeviceDynamic.SensorModel) != len(singleDeviceDynamic.SensorType) || len(singleDeviceDynamic.SensorType) != len(singleDeviceDynamic.SensorConnection) {
-		return nil, fmt.Errorf("the lengths of sensor models, types and connections must match, got %d/%d/%d", len(singleDeviceDynamic.SensorModel), len(singleDeviceDynamic.SensorType), len(singleDeviceDynamic.SensorConnection))
-	}
 
-	// nothing to parse for this one
-	parsedSensorModels := singleDeviceDynamic.SensorModel
+	// TODO: the values are returned in a bad format. sometimes wrong.
+	//       this is just a note that upstream needs to change
+	result := make([]CimiSensor, len(singleDeviceDynamic.Sensors))
+	for i := 0; i < len(singleDeviceDynamic.Sensors); i++ {
+		// nothing to parse here, it's a string already
+		result[i].HardwareModel = singleDeviceDynamic.Sensors[i].SensorModel
 
-	parsedSensorTypes := make([][]string, len(singleDeviceDynamic.SensorType))
-	for i, st := range singleDeviceDynamic.SensorType {
-		err = json.Unmarshal([]byte(st), &parsedSensorTypes[i])
+		var sensorTypes []string
+		err = json.Unmarshal([]byte(singleDeviceDynamic.Sensors[i].SensorType), &sensorTypes)
 		if err != nil {
 			return nil, err
 		}
-	}
+		result[i].Dimensions = sensorTypes
 
-	parsedSensorConnections := make([]map[string]interface{}, len(singleDeviceDynamic.SensorConnection))
-	for i, sc := range singleDeviceDynamic.SensorConnection {
-		err = json.Unmarshal([]byte(sc), &parsedSensorConnections[i])
+		var sensorConnection map[string]interface{}
+		err = json.Unmarshal([]byte(singleDeviceDynamic.Sensors[i].SensorConnection), &sensorConnection)
 		if err != nil {
 			return nil, err
 		}
-	}
-
-	result := make([]CimiSensor, len(parsedSensorModels))
-	for i := 0; i < len(parsedSensorModels); i++ {
-		result[i].HardwareModel = parsedSensorModels[i]
-		result[i].Dimensions = parsedSensorTypes[i]
-		result[i].ConnectionParameters = parsedSensorConnections[i]
+		result[i].ConnectionParameters = sensorConnection
 	}
 	return result, nil
 }
