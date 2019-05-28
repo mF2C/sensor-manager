@@ -6,6 +6,7 @@ import (
 	"hash/crc64"
 	"log"
 	"math/rand"
+	sensormanager "mf2c-sensor-manager/sensor-manager"
 	"os"
 	"strconv"
 	"sync"
@@ -14,20 +15,20 @@ import (
 
 func runSensorSimulator(mqttHost string, mqttPort uint16, sensorDriverPassword string) {
 	log.Println("Starting in sensor simulation mode.")
-	mqttClient := connectMqttClient(fmt.Sprintf("tcp://%s:%d", mqttHost, mqttPort), "sensor-simulator", SensorDriverUsername, sensorDriverPassword)
-	publishMessagesIndefinitely(mqttClient, TopicSensorReceive, 1*time.Second)
+	mqttClient := sensormanager.ConnectMqttClient(fmt.Sprintf("tcp://%s:%d", mqttHost, mqttPort), "sensor-simulator", sensormanager.SensorDriverUsername, sensorDriverPassword)
+	sensormanager.PublishMessagesIndefinitely(mqttClient, sensormanager.TopicSensorReceive, 1*time.Second)
 }
 
 func runProduction(mqttHost string, mqttPort uint16, cimiTraefikHost string, cimiTraefikPort uint16, lifecycleHost string, lifecyclePort uint16,
-	authDatabase AuthDatabase, httpServerPort uint16, sensorCheckIntervalSeconds uint, sensorContainerMapFilename string) {
+	authDatabase sensormanager.AuthDatabase, httpServerPort uint16, sensorCheckIntervalSeconds uint, sensorContainerMapFilename string) {
 	log.Println("Starting in production mode.")
 	// the server needs to start beforehand, as message transformations connect to MQTT and thus require auth
 	wg := sync.WaitGroup{}
 	wg.Add(3)
-	go startBlockingHttpServer(&wg, &authDatabase, httpServerPort)
-	mqttClient := connectMqttClient(fmt.Sprintf("tcp://%s:%d", mqttHost, mqttPort), "sensor-manager", SuperuserUsername, authDatabase.AdministratorAccessToken)
-	go startMessageTransformations(&wg, &authDatabase, mqttClient)
-	go startContainerManager(&wg, cimiTraefikHost, cimiTraefikPort, lifecycleHost, lifecyclePort, mqttHost, mqttPort, &authDatabase, sensorCheckIntervalSeconds, sensorContainerMapFilename)
+	go sensormanager.StartBlockingHttpServer(&wg, &authDatabase, httpServerPort)
+	mqttClient := sensormanager.ConnectMqttClient(fmt.Sprintf("tcp://%s:%d", mqttHost, mqttPort), "sensor-manager", sensormanager.SuperuserUsername, authDatabase.AdministratorAccessToken)
+	go sensormanager.StartMessageTransformations(&wg, &authDatabase, mqttClient)
+	go sensormanager.StartContainerManager(&wg, cimiTraefikHost, cimiTraefikPort, lifecycleHost, lifecyclePort, mqttHost, mqttPort, &authDatabase, sensorCheckIntervalSeconds, sensorContainerMapFilename)
 	wg.Wait()
 }
 
@@ -73,7 +74,7 @@ func main() {
 		sensorContainerMapFilename := getEnvMandatoryString("SENSOR_CONTAINER_MAP_FILE")
 
 		rand.Seed(int64(crc64.Checksum([]byte(applicationSecret), crc64.MakeTable(crc64.ECMA))))
-		authDatabase := loadOrCreateAuthDatabase(authDatabaseFilename, administratorAccessToken, sensorDriverAccessToken)
+		authDatabase := sensormanager.LoadOrCreateAuthDatabase(authDatabaseFilename, administratorAccessToken, sensorDriverAccessToken)
 
 		runProduction(mqttHost, uint16(mqttPort), cimiHost, uint16(cimiPort), lifecycleHost, uint16(lifecyclePort), authDatabase, uint16(httpServerPort), uint(sensorsCheckIntervalSeconds), sensorContainerMapFilename)
 	}

@@ -1,4 +1,4 @@
-package main
+package sensormanager
 
 import (
 	"encoding/json"
@@ -140,7 +140,7 @@ func getOrCreateServiceInstance(cimiConnectionParams Mf2cConnectionParameters, l
 	return cimiServiceInstance, nil
 }
 
-func startContainerManager(wg *sync.WaitGroup, cimiTraefikHost string, cimiTraefikPort uint16, lifecycleHost string, lifecyclePort uint16,
+func StartContainerManager(wg *sync.WaitGroup, cimiTraefikHost string, cimiTraefikPort uint16, lifecycleHost string, lifecyclePort uint16,
 	mqttHost string, mqttPort uint16, authDb *AuthDatabase, sensorCheckIntervalSeconds uint, sensorContainerMapFilename string) {
 	defer wg.Done()
 	log.Println("Starting container manager.")

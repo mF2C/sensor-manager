@@ -1,3 +1,3 @@
 FROM alpine:3.9
 ENTRYPOINT ["/app/mf2c-sensor-manager-example-driver"]
-COPY bin/mf2c-sensor-manager-example-driver /app/mf2c-sensor-manager-example-driver
+COPY bin/example-driver /app/mf2c-sensor-manager-example-driver

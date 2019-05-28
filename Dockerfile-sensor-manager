@@ -1,4 +1,4 @@
 FROM alpine:3.9
 ENTRYPOINT ["/app/mf2c-sensor-manager"]
 COPY sensor-container-map.json /data/sensor-container-map.json
-COPY bin/mf2c-sensor-manager /app/mf2c-sensor-manager
+COPY bin/sensor-manager /app/mf2c-sensor-manager

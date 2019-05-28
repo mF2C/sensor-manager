@@ -1,4 +1,4 @@
-package main
+package sensormanager
 
 import (
 	"fmt"
@@ -40,7 +40,7 @@ func getParamsFromRequest(req *http.Request) MqttAuthParams {
 	}
 }
 
-func startBlockingHttpServer(wg *sync.WaitGroup, authDb *AuthDatabase, port uint16) {
+func StartBlockingHttpServer(wg *sync.WaitGroup, authDb *AuthDatabase, port uint16) {
 	http.HandleFunc("/auth", func(writer http.ResponseWriter, request *http.Request) {
 		authParams := getParamsFromRequest(request)
 		if authDb.isAuthenticated(authParams.Username, authParams.Password) {

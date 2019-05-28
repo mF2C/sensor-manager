@@ -1,4 +1,4 @@
-package main
+package sensormanager
 
 import (
 	"crypto/rand"
@@ -39,7 +39,7 @@ type AuthDatabase struct {
 	SensorDriverAccessToken string
 }
 
-func loadOrCreateAuthDatabase(filename string, administratorAccessToken string, sensorDriverAccessToken string) AuthDatabase {
+func LoadOrCreateAuthDatabase(filename string, administratorAccessToken string, sensorDriverAccessToken string) AuthDatabase {
 	contents, err := ioutil.ReadFile(filename)
 	if err != nil {
 		log.Printf("Reading auth database file %s failed, creating anew.", filename)

@@ -1,8 +1,8 @@
-package main
+package sensormanager
 
 import (
 	"encoding/json"
-	"github.com/eclipse/paho.mqtt.golang"
+	mqtt "github.com/eclipse/paho.mqtt.golang"
 	"log"
 	"os"
 	"sync"
@@ -35,7 +35,7 @@ type OutgoingClientMessage struct {
 	Unit      string
 }
 
-func connectMqttClient(address string, clientId string, username string, password string) mqtt.Client {
+func ConnectMqttClient(address string, clientId string, username string, password string) mqtt.Client {
 	log.Printf("Building a new MQTT client with id %s.", clientId)
 	defaultMessageHandler := func(client mqtt.Client, msg mqtt.Message) {
 		log.Printf("client %s got: %s -> %s", clientId, msg.Topic(), msg.Payload())
@@ -83,7 +83,7 @@ func transformMessage(incoming IncomingSensorMessage) OutgoingClientMessage {
 	}
 }
 
-func startMessageTransformations(wg *sync.WaitGroup, authDb *AuthDatabase, subscribeClient mqtt.Client) {
+func StartMessageTransformations(wg *sync.WaitGroup, authDb *AuthDatabase, subscribeClient mqtt.Client) {
 	defer wg.Done()
 	log.Println("Starting message transformations.")
 	if token := subscribeClient.Subscribe(TopicSensorReceive, 0, func(receiveClient mqtt.Client, message mqtt.Message) {

@@ -4,7 +4,7 @@
         "version": "latest"
     },
     "smartboat-bm": {
-        "image": "local/sensor-manager-example-driver",
+        "image": "mf2c/sensor-manager-example-driver",
         "version": "latest"
     }
 }
