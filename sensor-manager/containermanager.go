@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
-	"os"
 	"sync"
 	"time"
 )
@@ -84,13 +83,12 @@ func getOrCreateUser(connectionParams Mf2cConnectionParameters) (*CimiUser, erro
 		if err != nil {
 			return nil, err
 		}
-		user, err := getCimiUser(connectionParams, CimiUsername)
+		user, err = getCimiUser(connectionParams, CimiUsername)
 		if err != nil {
 			return nil, err
 		}
 		if user == nil {
-			log.Printf("Created a CIMI user for %s but it was not present on lookup.", CimiUsername)
-			os.Exit(1)
+			return nil, fmt.Errorf("created a CIMI user for %s but it was not present on lookup", CimiUsername)
 		}
 	}
 	return user, nil
@@ -151,7 +149,7 @@ func getOrCreateServiceInstance(cimiConnectionParams Mf2cConnectionParameters, l
 		if err != nil {
 			return nil, err
 		}
-		cimiServiceInstance, err := getSensorDriverServiceInstance(cimiConnectionParams, cimiService)
+		cimiServiceInstance, err = getSensorDriverServiceInstance(cimiConnectionParams, cimiService)
 		if err != nil {
 			return nil, err
 		}
