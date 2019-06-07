@@ -10,11 +10,14 @@ import (
 	"net/http"
 	"strings"
 	"text/template"
+	"time"
 )
 
 // TODO: this will be removed. maybe.
 const CimiAuthenticationHeaderKey = "Slipstream-Authn-Info"
 const CimiAuthenticationBypassValue = "internal ADMIN"
+
+const CimiSlaTemplateName = "sensor-manager-sla"
 
 var CimiAdditionalHeaders = []struct {
 	Key   string
@@ -146,18 +149,52 @@ type CimiSensor struct {
 	ConnectionParameters map[string]interface{}
 }
 
+type CimiSlaTemplate struct {
+	Id CimiIdentifier `json:"id"`
+	// required
+	Name    string `json:"name"`
+	State   string `json:"state"`
+	Details struct {
+		Type     string `json:"type"`
+		Name     string `json:"name"`
+		Provider struct {
+			Id   string `json:"id"`
+			Name string `json:"name"`
+		} `json:"provider"`
+		Client struct {
+			Id   string `json:"id"`
+			Name string `json:"name"`
+		} `json:"client"`
+		Creation   string `json:"creation"`
+		Expiration string `json:"expiration"`
+		Guarantees []struct {
+			Name       string `json:"name"`
+			Constraint string `json:"constraint"`
+		} `json:"guarantees"`
+	} `json:"details"`
+	// optional
+	Created string `json:"created,omitifempty"`
+	Updated string `json:"updated,omitifempty"`
+}
+
+type CimiSlaTemplateList struct {
+	Count     uint              `json:"count"`
+	Templates []CimiSlaTemplate `json:"templates"`
+}
+
 // used in PUT /api/service
 type CimiService struct {
 	Id CimiIdentifier `json:"id"`
 	// required
-	Name      string `json:"name"`
-	Exec      string `json:"exec"`
-	ExecType  string `json:"exec_type"`
-	AgentType string `json:"agent_type"`
+	Name         string     `json:"name"`
+	Exec         string     `json:"exec"`
+	ExecType     string     `json:"exec_type"`
+	AgentType    string     `json:"agent_type"`
+	NumAgents    uint       `json:"num_agents"`
+	SlaTemplates []CimiHref `json:"sla_templates"`
 	// optional
 	Description       string   `json:"description,omitempty"`
 	ExecPorts         []uint16 `json:"exec_ports,omitempty"`
-	NumAgents         uint     `json:"num_agents,omitempty"`
 	CpuArch           string   `json:"cpu_arch,omitempty"`
 	Os                string   `json:"os,omitempty"`
 	MemoryMin         uint64   `json:"memory_min,omitempty"`
@@ -327,6 +364,20 @@ func getCimiUser(connectionParams Mf2cConnectionParameters, username string) (*C
 	return nil, nil
 }
 
+func getSlaTemplate(connectionParams Mf2cConnectionParameters, templateName string) (*CimiSlaTemplate, error) {
+	var parsedResponse CimiSlaTemplateList
+	err := connectionParams.getUnmarshal("/api/sla-template", &parsedResponse)
+	if err != nil {
+		return nil, err
+	}
+	for _, st := range parsedResponse.Templates {
+		if st.Name == templateName {
+			return &st, nil
+		}
+	}
+	return nil, nil
+}
+
 func getSensorDriverService(connectionParams Mf2cConnectionParameters, container SensorDriverContainer) (*CimiService, error) {
 	var parsedResponse CimiServiceList
 	err := connectionParams.getUnmarshal("/api/service", &parsedResponse)
@@ -367,6 +418,28 @@ func createCimiUser(connectionParams Mf2cConnectionParameters, username string, 
 	return connectionParams.post("/api/user", &req)
 }
 
+func createSlaTemplate(connectionParams Mf2cConnectionParameters, templateName string) error {
+	req := CimiSlaTemplate{}
+	req.Name = templateName
+	req.State = "started"
+	req.Details.Type = "template"
+	req.Details.Name = templateName
+	req.Details.Provider.Id = "mf2c"
+	req.Details.Provider.Name = "mF2C Platform"
+	req.Details.Client.Id = "c02"
+	req.Details.Client.Name = "clint"
+	req.Details.Creation = time.Now().UTC().Format(time.RFC3339Nano)
+	req.Details.Expiration = time.Now().Add(100 * 365 * 24 * time.Hour).UTC().Format(time.RFC3339Nano)
+	// this is ugly, but it at least gives a compilation error if it doesn't match the destination type
+	req.Details.Guarantees = []struct {
+		Name       string `json:"name"`
+		Constraint string `json:"constraint"`
+	}{
+		{Name: "TestGuarantee", Constraint: "execution_time < 1234567890"},
+	}
+	return connectionParams.post("/api/sla-template", &req)
+}
+
 // accepts a SensorDriverContainer as the dot
 const DockerComposeTemplate = `
 version: "3.5"
@@ -379,7 +452,7 @@ services:
 {{end}}
 `
 
-func createSensorDriverService(connectionParams Mf2cConnectionParameters, container SensorDriverContainer) error {
+func createSensorDriverService(connectionParams Mf2cConnectionParameters, container SensorDriverContainer, slaTemplate CimiSlaTemplate) error {
 	tpl, err := template.New("docker-compose").Parse(DockerComposeTemplate)
 	if err != nil {
 		return err
@@ -391,10 +464,12 @@ func createSensorDriverService(connectionParams Mf2cConnectionParameters, contai
 	}
 
 	return connectionParams.post("/api/service", CimiService{
-		Name:      container.getCimiServiceName(),
-		Exec:      "data:application/x-yaml," + buffer.String(),
-		ExecType:  "docker-compose",
-		AgentType: "normal",
+		Name:         container.getCimiServiceName(),
+		Exec:         "data:application/x-yaml," + buffer.String(),
+		ExecType:     "docker-compose",
+		AgentType:    "normal",
+		NumAgents:    1,
+		SlaTemplates: []CimiHref{{Href: string(slaTemplate.Id)}},
 	})
 }
 

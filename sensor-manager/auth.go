@@ -20,12 +20,12 @@ const SensorDriverUsername = "sensor-driver"
 const GeneratedTokenLengthBytes = 32
 
 type SensorTopic struct {
-	SensorId string
+	SensorId string `json:"sensorId"`
 	// the complete topic, not only the last part
-	Name     string
-	Quantity string
-	Username string
-	Password string
+	Name     string `json:"name"`
+	Quantity string `json:"quantity"`
+	Username string `json:"username"`
+	Password string `json:"password"`
 }
 
 type AuthDatabase struct {

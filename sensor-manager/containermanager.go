@@ -89,21 +89,43 @@ func getOrCreateUser(connectionParams Mf2cConnectionParameters) (*CimiUser, erro
 			return nil, err
 		}
 		if user == nil {
-			log.Printf("Started a CIMI user for %s but it was not present on lookup.", CimiUsername)
+			log.Printf("Created a CIMI user for %s but it was not present on lookup.", CimiUsername)
 			os.Exit(1)
 		}
 	}
 	return user, nil
 }
 
-func getOrCreateService(connectionParams Mf2cConnectionParameters, sensorDriverContainer SensorDriverContainer) (*CimiService, error) {
+func getOrCreateCimiSlaTemplate(connectionParams Mf2cConnectionParameters, templateName string) (*CimiSlaTemplate, error) {
+	slaTemplate, err := getSlaTemplate(connectionParams, templateName)
+	if err != nil {
+		return nil, err
+	}
+	if slaTemplate == nil {
+		log.Printf("SLA template %s does not exist, creating.", templateName)
+		err = createSlaTemplate(connectionParams, templateName)
+		if err != nil {
+			return nil, err
+		}
+		slaTemplate, err = getSlaTemplate(connectionParams, templateName)
+		if err != nil {
+			return nil, err
+		}
+		if slaTemplate == nil {
+			return nil, fmt.Errorf("created a SLA template for %s but it was not present on lookup", templateName)
+		}
+	}
+	return slaTemplate, err
+}
+
+func getOrCreateService(connectionParams Mf2cConnectionParameters, sensorDriverContainer SensorDriverContainer, slaTemplate CimiSlaTemplate) (*CimiService, error) {
 	cimiService, err := getSensorDriverService(connectionParams, sensorDriverContainer)
 	if err != nil {
 		return nil, err
 	}
 	if cimiService == nil {
 		log.Printf("Service for %s does not exist, creating.", sensorDriverContainer.SensorHardwareModel)
-		err = createSensorDriverService(connectionParams, sensorDriverContainer)
+		err = createSensorDriverService(connectionParams, sensorDriverContainer, slaTemplate)
 		if err != nil {
 			return nil, err
 		}
@@ -168,6 +190,10 @@ func StartContainerManager(wg *sync.WaitGroup, cimiTraefikHost string, cimiTraef
 	if err != nil {
 		panic(err)
 	}
+	slaTemplate, err := getOrCreateCimiSlaTemplate(cimiConnectionParams, CimiSlaTemplateName)
+	if err != nil {
+		panic(err)
+	}
 
 	knownSensors := map[string]CimiSensor{}
 	for {
@@ -185,7 +211,7 @@ func StartContainerManager(wg *sync.WaitGroup, cimiTraefikHost string, cimiTraef
 					panic(err)
 				}
 				log.Printf("Ensuring the service for %s exists.", s.HardwareModel)
-				cimiService, err := getOrCreateService(cimiConnectionParams, *sensorDriverContainer)
+				cimiService, err := getOrCreateService(cimiConnectionParams, *sensorDriverContainer, *slaTemplate)
 				if err != nil {
 					panic(err)
 				}

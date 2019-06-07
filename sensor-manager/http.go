@@ -1,6 +1,7 @@
 package sensormanager
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -71,6 +72,17 @@ func StartBlockingHttpServer(wg *sync.WaitGroup, authDb *AuthDatabase, port uint
 		} else {
 			writer.WriteHeader(403)
 			log.Printf("/acl (403) -> %+v", authParams)
+		}
+	})
+	// TODO: this returns everything to everyone, needs auth through cimi
+	http.HandleFunc("/topics", func(writer http.ResponseWriter, request *http.Request) {
+		serialized, err := json.Marshal(authDb.Topics)
+		if err != nil {
+			panic(err)
+		}
+		_, err = writer.Write(serialized)
+		if err != nil {
+			panic(err)
 		}
 	})
 	defer wg.Done()
