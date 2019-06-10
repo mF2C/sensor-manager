@@ -446,10 +446,16 @@ version: "3.5"
 services:
   sensor-driver:
     image: {{.DockerImagePath}}:{{.DockerImageVersion}}
+    networks:
+      - mf2c_default
     environment:
 {{range .Environment}}
       - '{{.Key}}={{.Value}}'
 {{end}}
+networks:
+  mf2c_default:
+    name: mf2c_default
+    external: true
 `
 
 func createSensorDriverService(connectionParams Mf2cConnectionParameters, container SensorDriverContainer, slaTemplate CimiSlaTemplate) error {
