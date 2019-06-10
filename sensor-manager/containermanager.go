@@ -184,21 +184,40 @@ func StartContainerManager(wg *sync.WaitGroup, cimiTraefikHost string, cimiTraef
 		Headers:  LifecycleAdditionalHeaders,
 	}
 
-	cimiUser, err := getOrCreateUser(cimiConnectionParams)
-	if err != nil {
-		panic(err)
+	// go is such a nice and readable language wow, very simple and much good
+	var cimiUser *CimiUser
+	var err error
+	for {
+		cimiUser, err = getOrCreateUser(cimiConnectionParams)
+		if err != nil {
+			log.Printf("Error establishing CIMI user: %s", err)
+			time.Sleep(1 * time.Second)
+		} else {
+			break
+		}
 	}
-	slaTemplate, err := getOrCreateCimiSlaTemplate(cimiConnectionParams, CimiSlaTemplateName)
-	if err != nil {
-		panic(err)
+
+	var slaTemplate *CimiSlaTemplate
+	for {
+		slaTemplate, err = getOrCreateCimiSlaTemplate(cimiConnectionParams, CimiSlaTemplateName)
+		if err != nil {
+			log.Printf("Error establishing CIMI user: %s", err)
+			time.Sleep(1 * time.Second)
+		} else {
+			break
+		}
 	}
 
 	knownSensors := map[string]CimiSensor{}
 	for {
 		sensors, err := getSensorsFromCimi(cimiConnectionParams)
 		if err != nil {
-			panic(err)
+			log.Printf("Error getting sensors from CIMI: %s", err)
+			time.Sleep(time.Duration(sensorCheckIntervalSeconds) * time.Second)
+			continue
 		}
+
+		// golang is much production language and also does not support breaking out of specific nested loops is bad and you should feel bad
 		for _, s := range sensors {
 			_, present := knownSensors[s.HardwareModel]
 			if !present {
@@ -206,17 +225,20 @@ func StartContainerManager(wg *sync.WaitGroup, cimiTraefikHost string, cimiTraef
 				log.Printf("Adding a new sensor container: %s", s.HardwareModel)
 				sensorDriverContainer, err := getDriverContainerForSensor(sensorContainerMapFilename, s, authDb, mqttHost, mqttPort)
 				if err != nil {
-					panic(err)
+					log.Printf("Error adding a new sensor container: %s", err)
+					break
 				}
 				log.Printf("Ensuring the service for %s exists.", s.HardwareModel)
 				cimiService, err := getOrCreateService(cimiConnectionParams, *sensorDriverContainer, *slaTemplate)
 				if err != nil {
-					panic(err)
+					log.Printf("Error creating the sensor driver service: %s", err)
+					break
 				}
 				log.Printf("Ensuring the service instance for %s exists.", s.HardwareModel)
 				_, err = getOrCreateServiceInstance(cimiConnectionParams, lifecycleConnectionParams, *cimiUser, *cimiService)
 				if err != nil {
-					panic(err)
+					log.Printf("Error spawning the sensor driver service: %s", err)
+					break
 				}
 			}
 		}
