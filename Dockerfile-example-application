@@ -1,0 +1,3 @@
+FROM alpine:3.9
+ENTRYPOINT ["/app/mf2c-sensor-manager-example-application"]
+COPY bin/example-application /app/mf2c-sensor-manager-example-application

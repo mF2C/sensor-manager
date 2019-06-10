@@ -156,9 +156,16 @@ func (db AuthDatabase) isAuthenticated(username string, password string) bool {
 // if the (username, topic) tuple exists
 // authentication with the password is done in isAuthenticated
 // the password is not available here, as this is only called when authentication passes
-func (db AuthDatabase) isAuthorized(username string, topic string) bool {
-	if db.isSuperuserPreauthenticated(username) || (constantTimeStringEqual(username, SensorDriverUsername) && constantTimeStringEqual(topic, TopicSensorReceive)) {
+func (db AuthDatabase) isAuthorized(username string, topic string, accessType int) bool {
+	if db.isSuperuserPreauthenticated(username) {
 		return true
+	}
+	if constantTimeStringEqual(username, SensorDriverUsername) && constantTimeStringEqual(topic, TopicSensorReceive) {
+		return true
+	}
+	// only the sensor driver and superuser are allowed to write, so reject all others
+	if accessType == MqttAuthAccessTypePublish {
+		return false
 	}
 	for _, dbTopic := range db.Topics {
 		if constantTimeStringEqual(topic, dbTopic.Name) && constantTimeStringEqual(username, dbTopic.Username) {

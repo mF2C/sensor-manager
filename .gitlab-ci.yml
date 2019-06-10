@@ -2,10 +2,12 @@ variables:
   GIT_SUBMODULE_STRATEGY: normal
   MOSQUITTO_IMAGE: $CI_REGISTRY_IMAGE/mosquitto
   EXAMPLE_DRIVER_IMAGE: $CI_REGISTRY_IMAGE/example-driver
+  EXAMPLE_APPLICATION_IMAGE: $CI_REGISTRY_IMAGE/example-application
   # required CI env input: DOCKER_HUB_USERNAME, DOCKER_HUB_PASSWORD
   DOCKER_HUB_IMAGE: mf2c/sensor-manager
   DOCKER_HUB_IMAGE_MOSQUITTO: mf2c/sensor-manager-mosquitto
   DOCKER_HUB_IMAGE_EXAMPLE_DRIVER: mf2c/sensor-manager-example-driver
+  DOCKER_HUB_IMAGE_EXAMPLE_APPLICATION: mf2c/sensor-manager-example-application
 
 stages:
   - compile
@@ -20,6 +22,7 @@ job-compile-x86_64:
     - apk add git
     - go build -o bin/sensor-manager sensor-manager.go
     - go build -o bin/example-driver example-driver.go
+    - go build -o bin/example-application example-application.go
   artifacts:
     name: "$CI_PROJECT_NAME-$CI_COMMIT_SHORT_SHA-x86_64"
     paths:
@@ -35,6 +38,7 @@ job-compile-armhf:
     - apk add git
     - go build -o bin/sensor-manager sensor-manager.go
     - go build -o bin/example-driver example-driver.go
+    - go build -o bin/example-application example-application.go
   artifacts:
     name: "$CI_PROJECT_NAME-$CI_COMMIT_SHORT_SHA-armhf"
     paths:
@@ -52,9 +56,11 @@ docker-image-x86_64:
     - docker build -t $CI_REGISTRY_IMAGE:latest-x86_64 --cache-from $CI_REGISTRY_IMAGE:latest-x86_64 -f Dockerfile-sensor-manager .
     - docker build -t $MOSQUITTO_IMAGE:latest-x86_64 --cache-from $MOSQUITTO_IMAGE:latest-x86_64 -f Dockerfile-mqtt-auth .
     - docker build -t $EXAMPLE_DRIVER_IMAGE:latest-x86_64 --cache-from $EXAMPLE_DRIVER_IMAGE:latest-x86_64 -f Dockerfile-example-driver .
+    - docker build -t $EXAMPLE_APPLICATION_IMAGE:latest-x86_64 --cache-from $EXAMPLE_APPLICATION_IMAGE:latest-x86_64 -f Dockerfile-example-application .
     - docker push $CI_REGISTRY_IMAGE:latest-x86_64
     - docker push $MOSQUITTO_IMAGE:latest-x86_64
     - docker push $EXAMPLE_DRIVER_IMAGE:latest-x86_64
+    - docker push $EXAMPLE_APPLICATION_IMAGE:latest-x86_64
   variables:
     DOCKER_HOST: tcp://docker:2375/
   services:
@@ -72,9 +78,11 @@ docker-image-armhf:
     - docker build -t $CI_REGISTRY_IMAGE:latest-armhf --cache-from $CI_REGISTRY_IMAGE:latest-armhf -f Dockerfile-sensor-manager .
     - docker build -t $MOSQUITTO_IMAGE:latest-armhf --cache-from $MOSQUITTO_IMAGE:latest-armhf -f Dockerfile-mqtt-auth .
     - docker build -t $EXAMPLE_DRIVER_IMAGE:latest-armhf --cache-from $EXAMPLE_DRIVER_IMAGE:latest-armhf -f Dockerfile-example-driver .
+    - docker build -t $EXAMPLE_APPLICATION_IMAGE:latest-armhf --cache-from $EXAMPLE_APPLICATION_IMAGE:latest-armhf -f Dockerfile-example-application .
     - docker push $CI_REGISTRY_IMAGE:latest-armhf
     - docker push $MOSQUITTO_IMAGE:latest-armhf
     - docker push $EXAMPLE_DRIVER_IMAGE:latest-armhf
+    - docker push $EXAMPLE_APPLICATION_IMAGE:latest-armhf
   variables:
     DOCKER_HOST: tcp://docker:2375/
   services:
@@ -99,18 +107,22 @@ publish-crossplatform-gitlab:
     - docker manifest create $CI_REGISTRY_IMAGE:latest $CI_REGISTRY_IMAGE:latest-x86_64 $CI_REGISTRY_IMAGE:latest-armhf
     - docker manifest annotate $CI_REGISTRY_IMAGE:latest $CI_REGISTRY_IMAGE:latest-x86_64 --arch amd64
     - docker manifest annotate $CI_REGISTRY_IMAGE:latest $CI_REGISTRY_IMAGE:latest-armhf --arch arm
+    - docker manifest push $CI_REGISTRY_IMAGE:latest
     # repeat for mosquitto
     - docker manifest create $MOSQUITTO_IMAGE:latest $MOSQUITTO_IMAGE:latest-x86_64 $MOSQUITTO_IMAGE:latest-armhf
     - docker manifest annotate $MOSQUITTO_IMAGE:latest $MOSQUITTO_IMAGE:latest-x86_64 --arch amd64
     - docker manifest annotate $MOSQUITTO_IMAGE:latest $MOSQUITTO_IMAGE:latest-armhf --arch arm
+    - docker manifest push $MOSQUITTO_IMAGE:latest
     # repeat for the example driver
     - docker manifest create $EXAMPLE_DRIVER_IMAGE:latest $EXAMPLE_DRIVER_IMAGE:latest-x86_64 $EXAMPLE_DRIVER_IMAGE:latest-armhf
     - docker manifest annotate $EXAMPLE_DRIVER_IMAGE:latest $EXAMPLE_DRIVER_IMAGE:latest-x86_64 --arch amd64
     - docker manifest annotate $EXAMPLE_DRIVER_IMAGE:latest $EXAMPLE_DRIVER_IMAGE:latest-armhf --arch arm
-    # push all the images together
-    - docker manifest push $CI_REGISTRY_IMAGE:latest
-    - docker manifest push $MOSQUITTO_IMAGE:latest
     - docker manifest push $EXAMPLE_DRIVER_IMAGE:latest
+    # repeat for the example application
+    - docker manifest create $EXAMPLE_APPLICATION_IMAGE:latest $EXAMPLE_APPLICATION_IMAGE:latest-x86_64 $EXAMPLE_APPLICATION_IMAGE:latest-armhf
+    - docker manifest annotate $EXAMPLE_APPLICATION_IMAGE:latest $EXAMPLE_APPLICATION_IMAGE:latest-x86_64 --arch amd64
+    - docker manifest annotate $EXAMPLE_APPLICATION_IMAGE:latest $EXAMPLE_APPLICATION_IMAGE:latest-armhf --arch arm
+    - docker manifest push $EXAMPLE_APPLICATION_IMAGE:latest
   variables:
     DOCKER_HOST: tcp://docker:2375/
   services:
@@ -161,6 +173,17 @@ publish-crossplatform-dockerhub:
     - docker manifest annotate $DOCKER_HUB_IMAGE_EXAMPLE_DRIVER:latest $DOCKER_HUB_IMAGE_EXAMPLE_DRIVER:latest-x86_64 --arch amd64
     - docker manifest annotate $DOCKER_HUB_IMAGE_EXAMPLE_DRIVER:latest $DOCKER_HUB_IMAGE_EXAMPLE_DRIVER:latest-armhf --arch arm
     - docker manifest push $DOCKER_HUB_IMAGE_EXAMPLE_DRIVER:latest
+    # repeat for the example application
+    - docker pull $EXAMPLE_APPLICATION_IMAGE:latest-x86_64
+    - docker pull $EXAMPLE_APPLICATION_IMAGE:latest-armhf
+    - docker tag $EXAMPLE_APPLICATION_IMAGE:latest-x86_64 $DOCKER_HUB_IMAGE_EXAMPLE_APPLICATION:latest-x86_64
+    - docker tag $EXAMPLE_APPLICATION_IMAGE:latest-armhf $DOCKER_HUB_IMAGE_EXAMPLE_APPLICATION:latest-armhf
+    - docker push $DOCKER_HUB_IMAGE_EXAMPLE_APPLICATION:latest-x86_64
+    - docker push $DOCKER_HUB_IMAGE_EXAMPLE_APPLICATION:latest-armhf
+    - docker manifest create $DOCKER_HUB_IMAGE_EXAMPLE_APPLICATION:latest $DOCKER_HUB_IMAGE_EXAMPLE_APPLICATION:latest-x86_64 $DOCKER_HUB_IMAGE_EXAMPLE_APPLICATION:latest-armhf
+    - docker manifest annotate $DOCKER_HUB_IMAGE_EXAMPLE_APPLICATION:latest $DOCKER_HUB_IMAGE_EXAMPLE_APPLICATION:latest-x86_64 --arch amd64
+    - docker manifest annotate $DOCKER_HUB_IMAGE_EXAMPLE_APPLICATION:latest $DOCKER_HUB_IMAGE_EXAMPLE_APPLICATION:latest-armhf --arch arm
+    - docker manifest push $DOCKER_HUB_IMAGE_EXAMPLE_APPLICATION:latest
   variables:
     DOCKER_HOST: tcp://docker:2375/
   services:

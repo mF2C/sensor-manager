@@ -20,4 +20,10 @@ auth_opt_http_with_tls      false
 auth_opt_http_retry_count   2
 EOF
 
+echo "Configuring mosquitto to listen on websocket port ${MOSQUITTO_WEBSOCKETS_PORT}"
+cat >/etc/mosquitto/mosquitto.conf.d/mosquitto-ws.conf <<EOF
+port ${MOSQUITTO_WEBSOCKETS_PORT}
+protocol websockets
+EOF
+
 /usr/local/sbin/mosquitto -c /etc/mosquitto/mosquitto.conf

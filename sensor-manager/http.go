@@ -65,8 +65,7 @@ func StartBlockingHttpServer(wg *sync.WaitGroup, authDb *AuthDatabase, port uint
 	})
 	http.HandleFunc("/acl", func(writer http.ResponseWriter, request *http.Request) {
 		authParams := getParamsFromRequest(request)
-		// no one is authorized to write to topics
-		if authParams.AccessType == MqttAuthAccessTypeSubscribe && authDb.isAuthorized(authParams.Username, authParams.Topic) {
+		if authDb.isAuthorized(authParams.Username, authParams.Topic, authParams.AccessType) {
 			writer.WriteHeader(200)
 			log.Printf("/acl (200) -> %+v", authParams)
 		} else {

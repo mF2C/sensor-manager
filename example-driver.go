@@ -3,59 +3,37 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	mqtt "github.com/eclipse/paho.mqtt.golang"
 	"log"
+	sensormanager "mf2c-sensor-manager/sensor-manager"
 	"os"
 	"strconv"
 	"time"
 )
 
-// here for clarity; authority in mqtt.go
-type SensorReading struct {
-	SensorId   string
-	SensorType string
-	Quantity   string
-	Timestamp  string
-	Value      float64
-	Unit       string
-}
-
-// here for clarity, authority in mqtt.go
-func connectMqttClient(address string, clientId string, username string, password string) mqtt.Client {
-	log.Printf("Building a new MQTT client with id %s.", clientId)
-	mqttClientOptions := mqtt.NewClientOptions()
-	mqttClientOptions.AddBroker(address)
-	mqttClientOptions.SetClientID(clientId)
-	mqttClientOptions.SetKeepAlive(2 * time.Second)
-	mqttClientOptions.SetPingTimeout(1 * time.Second)
-	mqttClientOptions.SetUsername(username)
-	mqttClientOptions.SetPassword(password)
-
-	mqttClient := mqtt.NewClient(mqttClientOptions)
-	log.Printf("Connecting to MQTT server at %s", address)
-	connectionSuccessful := false
-	for i := 1; !connectionSuccessful; i++ {
-		log.Printf("    connection attempt %d...", i)
-		if token := mqttClient.Connect(); token.Wait() && token.Error() != nil {
-			log.Printf("        unsuccessful: %s", token.Error())
-			time.Sleep(1 * time.Second)
-		} else {
-			connectionSuccessful = true
-		}
-	}
-	log.Println("Connection to MQTT server successful.")
-	return mqttClient
-}
-
 func main() {
-	sensorManagerHost := os.Getenv("SENSOR_MANAGER_HOST")
+	sensorManagerHost, present := os.LookupEnv("SENSOR_MANAGER_HOST")
+	if !present {
+		panic(fmt.Errorf("sensor manager host not specified"))
+	}
+
 	sensorManagerPort, err := strconv.Atoi(os.Getenv("SENSOR_MANAGER_PORT"))
 	if err != nil {
 		panic(err)
 	}
-	sensorManagerUsername := os.Getenv("SENSOR_MANAGER_USERNAME")
-	sensorManagerPassword := os.Getenv("SENSOR_MANAGER_PASSWORD")
-	sensorManagerTopic := os.Getenv("SENSOR_MANAGER_TOPIC")
+	sensorManagerUsername, present := os.LookupEnv("SENSOR_MANAGER_USERNAME")
+	if !present {
+		panic(fmt.Errorf("sensor manager username not specified"))
+	}
+
+	sensorManagerPassword, present := os.LookupEnv("SENSOR_MANAGER_PASSWORD")
+	if !present {
+		panic(fmt.Errorf("sensor manager password not specified"))
+	}
+
+	sensorManagerTopic, present := os.LookupEnv("SENSOR_MANAGER_TOPIC")
+	if !present {
+		panic(fmt.Errorf("sensor manager topic not specified"))
+	}
 
 	sensorManagerConnectionInfoString := os.Getenv("SENSOR_CONNECTION_INFO")
 	var sensorManagerConnectionInfo map[string]interface{}
@@ -68,10 +46,11 @@ func main() {
 	log.Printf("Using username %s for topic %s", sensorManagerUsername, sensorManagerTopic)
 	log.Printf("Connection parameters: %+v", sensorManagerConnectionInfo)
 
-	mqttClient := connectMqttClient(fmt.Sprintf("%s:%d", sensorManagerHost, sensorManagerPort), "example-driver", sensorManagerUsername, sensorManagerPassword)
+	mqttClient := sensormanager.ConnectMqttClient(fmt.Sprintf("ws://%s:%d", sensorManagerHost, sensorManagerPort), "example-driver", sensorManagerUsername, sensorManagerPassword)
+	log.Print("WARNING: a successful connection does not mean writes will succeed - the MQTT server silently drops unauthorised writes!")
 
 	for i := 1; true; i++ {
-		reading := SensorReading{
+		reading := sensormanager.IncomingSensorMessage{
 			SensorId:   "example-driver",
 			SensorType: "example-driver",
 			Quantity:   "example-count",
@@ -84,7 +63,12 @@ func main() {
 			panic(err)
 		}
 
-		mqttClient.Publish(sensorManagerTopic, 0, false, readingJson)
+		sendtoken := mqttClient.Publish(sensorManagerTopic, 0, false, readingJson)
+		if sendtoken.Wait() && sendtoken.Error() != nil {
+			log.Print(sendtoken.Error())
+		} else {
+			log.Print("Value published.")
+		}
 		time.Sleep(1 * time.Second)
 	}
 }

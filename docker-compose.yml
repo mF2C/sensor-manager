@@ -1,21 +1,22 @@
 version: "3.5"
 services:
   mosquitto:
-    image: registry-gitlab.xlab.si/mf2c/sensor-manager/mosquitto:latest
-    ports:
-      - 1883:1883
-    environment:
-      - "MOSQUITTO_AUTH_HTTP_HOST=sensor-manager"
-      - "MOSQUITTO_AUTH_HTTP_PORT=8080"
-  sensor-manager:
-    image: registry-gitlab.xlab.si/mf2c/sensor-manager:latest
-    depends_on:
-      - mosquitto
+    image: mf2c/sensor-manager-mosquitto:latest
     ports:
       - 8080:8080
     environment:
+      - "MOSQUITTO_WEBSOCKETS_PORT=8080"
+      - "MOSQUITTO_AUTH_HTTP_HOST=sensor-manager"
+      - "MOSQUITTO_AUTH_HTTP_PORT=8080"
+  sensor-manager:
+    image: mf2c/sensor-manager:latest
+    depends_on:
+      - mosquitto
+    ports:
+      - 8081:8080
+    environment:
       - "MQTT_HOST=mosquitto"
-      - "MQTT_PORT=1883"
+      - "MQTT_PORT=8080"
       - "CIMI_HOST=traefik"
       - "CIMI_PORT=443"
       - "LIFECYCLE_HOST=lifecycle"

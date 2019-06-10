@@ -71,8 +71,8 @@ func ConnectMqttClient(address string, clientId string, username string, passwor
 }
 
 func validateIncomingMessage(incoming IncomingSensorMessage) bool {
-	_, err := time.Parse(time.RFC3339, incoming.Timestamp)
-	return err != nil
+	_, err := time.Parse(time.RFC3339Nano, incoming.Timestamp)
+	return err == nil
 }
 
 func transformMessage(incoming IncomingSensorMessage) OutgoingClientMessage {
@@ -87,6 +87,7 @@ func StartMessageTransformations(wg *sync.WaitGroup, authDb *AuthDatabase, subsc
 	defer wg.Done()
 	log.Println("Starting message transformations.")
 	if token := subscribeClient.Subscribe(TopicSensorReceive, 0, func(receiveClient mqtt.Client, message mqtt.Message) {
+		log.Printf("Got sensor driver message.")
 		unmarshaled := IncomingSensorMessage{}
 		err := json.Unmarshal(message.Payload(), &unmarshaled)
 		if err != nil {
@@ -116,5 +117,7 @@ func StartMessageTransformations(wg *sync.WaitGroup, authDb *AuthDatabase, subsc
 	}); token.Wait() && token.Error() != nil {
 		log.Println(token.Error())
 		os.Exit(1)
+	} else {
+		log.Print("No error subscribing to the sensor receive topic.")
 	}
 }
