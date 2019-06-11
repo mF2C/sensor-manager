@@ -28,16 +28,17 @@ The sensor driver is spawned with connection parameters in environment variables
 ```
 SENSOR_MANAGER_HOST=<host>
 SENSOR_MANAGER_PORT=<port>
+SENSOR_MANAGER_PATH_SUFFIX=[path suffix]
 SENSOR_MANAGER_USERNAME=<username>
 SENSOR_MANAGER_PASSWORD=<password>
 SENSOR_MANAGER_TOPIC=<topic>
 SENSOR_CONNECTION_INFO=<json>
 ``` 
 
-It must publish sensor values to an MQTT server at that endpoint to the specified topic, authenticated with 
-the username and password in the environment variables. Sensor connection information is provided in JSON form
-under `SENSOR_CONNECTION_INFO`. The output values must conform to the following 
-JSON structure:
+It must publish sensor values to an MQTT server at that endpoint with optionally a HTTP path suffix.
+Use the specified topic, authenticated with the username and password in the environment variables. 
+Sensor connection information is provided in JSON form under `SENSOR_CONNECTION_INFO`. 
+The output values must conform to the following JSON structure:
 
 ```json
 {

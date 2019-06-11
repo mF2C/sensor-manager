@@ -20,7 +20,7 @@ func runSensorSimulator(mqttHost string, mqttPort uint16, sensorDriverPassword s
 }
 
 func runProduction(mqttHost string, mqttPort uint16, cimiTraefikHost string, cimiTraefikPort uint16, lifecycleHost string, lifecyclePort uint16,
-	authDatabase sensormanager.AuthDatabase, httpServerPort uint16, sensorCheckIntervalSeconds uint, sensorContainerMapFilename string, sensorDriverDockerNetworkName string) {
+	authDatabase sensormanager.AuthDatabase, httpServerPort uint16, sensorCheckIntervalSeconds uint, sensorContainerMapFilename string, sensorDriverDockerNetworkName string, mqttPathSuffix string) {
 	log.Println("Starting in production mode.")
 	// the server needs to start beforehand, as message transformations connect to MQTT and thus require auth
 	wg := sync.WaitGroup{}
@@ -28,7 +28,7 @@ func runProduction(mqttHost string, mqttPort uint16, cimiTraefikHost string, cim
 	go sensormanager.StartBlockingHttpServer(&wg, &authDatabase, httpServerPort)
 	mqttClient := sensormanager.ConnectMqttClient(fmt.Sprintf("ws://%s:%d", mqttHost, mqttPort), "sensor-manager", sensormanager.SuperuserUsername, authDatabase.AdministratorAccessToken)
 	go sensormanager.StartMessageTransformations(&wg, &authDatabase, mqttClient)
-	go sensormanager.StartContainerManager(&wg, cimiTraefikHost, cimiTraefikPort, lifecycleHost, lifecyclePort, mqttHost, mqttPort, &authDatabase, sensorCheckIntervalSeconds, sensorContainerMapFilename, sensorDriverDockerNetworkName)
+	go sensormanager.StartContainerManager(&wg, cimiTraefikHost, cimiTraefikPort, lifecycleHost, lifecyclePort, mqttHost, mqttPort, &authDatabase, sensorCheckIntervalSeconds, sensorContainerMapFilename, sensorDriverDockerNetworkName, mqttPathSuffix)
 	wg.Wait()
 }
 
@@ -73,6 +73,7 @@ func main() {
 		sensorsCheckIntervalSeconds := getEnvMandatoryInt("SENSORS_CHECK_INTERVAL_SECONDS")
 		sensorContainerMapFilename := getEnvMandatoryString("SENSOR_CONTAINER_MAP_FILE")
 		sensorDriverDockerNetworkName := getEnvMandatoryString("SENSOR_DRIVER_DOCKER_NETWORK_NAME")
+		mqttPathSuffix := getEnvMandatoryString("MQTT_PATH_SUFFIX")
 
 		rand.Seed(int64(crc64.Checksum([]byte(applicationSecret), crc64.MakeTable(crc64.ECMA))))
 		authDatabase := sensormanager.LoadOrCreateAuthDatabase(authDatabaseFilename, administratorAccessToken, sensorDriverAccessToken)
@@ -86,6 +87,7 @@ func main() {
 			uint(sensorsCheckIntervalSeconds),
 			sensorContainerMapFilename,
 			sensorDriverDockerNetworkName,
+			mqttPathSuffix,
 		)
 	}
 }

@@ -20,6 +20,12 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+
+	sensorManagerPathSuffix, present := os.LookupEnv("SENSOR_MANAGER_PATH_SUFFIX")
+	if !present {
+		panic(fmt.Errorf("sensor manager path suffix not specified (empty is a valid value)"))
+	}
+
 	sensorManagerUsername, present := os.LookupEnv("SENSOR_MANAGER_USERNAME")
 	if !present {
 		panic(fmt.Errorf("sensor manager username not specified"))
@@ -46,7 +52,7 @@ func main() {
 	log.Printf("Using username %s for topic %s", sensorManagerUsername, sensorManagerTopic)
 	log.Printf("Connection parameters: %+v", sensorManagerConnectionInfo)
 
-	mqttClient := sensormanager.ConnectMqttClient(fmt.Sprintf("ws://%s:%d", sensorManagerHost, sensorManagerPort), "example-driver", sensorManagerUsername, sensorManagerPassword)
+	mqttClient := sensormanager.ConnectMqttClient(fmt.Sprintf("ws://%s:%d%s", sensorManagerHost, sensorManagerPort, sensorManagerPathSuffix), "example-driver", sensorManagerUsername, sensorManagerPassword)
 	log.Print("WARNING: a successful connection does not mean writes will succeed - the MQTT server silently drops unauthorised writes!")
 
 	for i := 1; true; i++ {

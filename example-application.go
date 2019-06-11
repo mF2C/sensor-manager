@@ -34,6 +34,11 @@ func main() {
 		panic(err)
 	}
 
+	sensorManagerMqttPathSuffix, present := os.LookupEnv("SENSOR_MANAGER_MQTT_PATH_SUFFIX")
+	if !present {
+		panic(fmt.Errorf("sensor manager MQTT path suffix not specified (empty is a valid value)"))
+	}
+
 	sensorManagerUrl := fmt.Sprintf("http://%s:%d", sensorManagerApiHost, sensorManagerApiPort)
 	topicsResponse, err := http.Get(sensorManagerUrl + "/topics")
 	if err != nil {
@@ -60,7 +65,7 @@ func main() {
 	}
 	log.Printf("Listening for sensor values on the first topic: %s", firstTopic.Name)
 	mqttClient := sensormanager.ConnectMqttClient(
-		fmt.Sprintf("ws://%s:%d", sensorManagerMqttHost, sensorManagerMqttPort),
+		fmt.Sprintf("ws://%s:%d%s", sensorManagerMqttHost, sensorManagerMqttPort, sensorManagerMqttPathSuffix),
 		"example-application",
 		firstTopic.Username,
 		firstTopic.Password,
