@@ -16,6 +16,7 @@ type SensorDriverContainer struct {
 	SensorHardwareModel string
 	DockerImagePath     string
 	DockerImageVersion  string
+	DockerNetworkName   string
 	// contains SENSOR_MANAGER_ and SENSOR_ vars
 	Environment []struct {
 		Key   string
@@ -28,7 +29,7 @@ func (receiver SensorDriverContainer) getCimiServiceName() string {
 }
 
 // reads a mapping file (json) for mappings; the whole file is reread each time to allow on-the-fly updates
-func getDriverContainerForSensor(sensorContainerMapFilename string, sensor CimiSensor, authDb *AuthDatabase, mqttHost string, mqttPort uint16) (*SensorDriverContainer, error) {
+func getDriverContainerForSensor(sensorContainerMapFilename string, sensor CimiSensor, authDb *AuthDatabase, mqttHost string, mqttPort uint16, sensorDriverDockerNetworkName string) (*SensorDriverContainer, error) {
 	hwContainerMap := map[string]struct {
 		Image   string `json:"image"`
 		Version string `json:"version"`
@@ -68,6 +69,7 @@ func getDriverContainerForSensor(sensorContainerMapFilename string, sensor CimiS
 		SensorHardwareModel: sensor.HardwareModel,
 		DockerImagePath:     mapping.Image,
 		DockerImageVersion:  mapping.Version,
+		DockerNetworkName:   sensorDriverDockerNetworkName,
 		Environment:         env,
 	}, nil
 }
@@ -161,7 +163,7 @@ func getOrCreateServiceInstance(cimiConnectionParams Mf2cConnectionParameters, l
 }
 
 func StartContainerManager(wg *sync.WaitGroup, cimiTraefikHost string, cimiTraefikPort uint16, lifecycleHost string, lifecyclePort uint16,
-	mqttHost string, mqttPort uint16, authDb *AuthDatabase, sensorCheckIntervalSeconds uint, sensorContainerMapFilename string) {
+	mqttHost string, mqttPort uint16, authDb *AuthDatabase, sensorCheckIntervalSeconds uint, sensorContainerMapFilename string, sensorDriverDockerNetworkName string) {
 	defer wg.Done()
 	log.Println("Starting container manager.")
 
@@ -223,7 +225,7 @@ func StartContainerManager(wg *sync.WaitGroup, cimiTraefikHost string, cimiTraef
 			if !present {
 				knownSensors[s.HardwareModel] = s
 				log.Printf("Adding a new sensor container: %s", s.HardwareModel)
-				sensorDriverContainer, err := getDriverContainerForSensor(sensorContainerMapFilename, s, authDb, mqttHost, mqttPort)
+				sensorDriverContainer, err := getDriverContainerForSensor(sensorContainerMapFilename, s, authDb, mqttHost, mqttPort, sensorDriverDockerNetworkName)
 				if err != nil {
 					log.Printf("Error adding a new sensor container: %s", err)
 					break

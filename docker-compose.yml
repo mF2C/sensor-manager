@@ -28,3 +28,4 @@ services:
       - "APPLICATION_SECRET=thisisaverysecureapplicationsecretplsnocrack"
       - "SENSORS_CHECK_INTERVAL_SECONDS=5"
       - "SENSOR_CONTAINER_MAP_FILE=/data/sensor-container-map.json"
+      - "SENSOR_DRIVER_DOCKER_NETWORK_NAME=mf2c_default"

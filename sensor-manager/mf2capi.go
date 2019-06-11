@@ -447,14 +447,14 @@ services:
   sensor-driver:
     image: {{.DockerImagePath}}:{{.DockerImageVersion}}
     networks:
-      - mf2c_default
+      - assigned_driver_network
     environment:
 {{range .Environment}}
       - '{{.Key}}={{.Value}}'
 {{end}}
 networks:
-  mf2c_default:
-    name: mf2c_default
+  assigned_driver_network:
+    name: {{.DockerNetworkName}}
     external: true
 `
 
