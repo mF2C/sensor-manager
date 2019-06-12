@@ -24,6 +24,11 @@ func main() {
 		panic(err)
 	}
 
+	sensorManagerApiPathPrefix, present := os.LookupEnv("SENSOR_MANAGER_API_PATH_PREFIX")
+	if !present {
+		panic(fmt.Errorf("sensor manager API path prefix not specified (empty is a valid value)"))
+	}
+
 	sensorManagerMqttHost, present := os.LookupEnv("SENSOR_MANAGER_MQTT_HOST")
 	if !present {
 		panic(fmt.Errorf("sensor manager MQTT host not specified"))
@@ -39,7 +44,7 @@ func main() {
 		panic(fmt.Errorf("sensor manager MQTT path suffix not specified (empty is a valid value)"))
 	}
 
-	sensorManagerUrl := fmt.Sprintf("http://%s:%d", sensorManagerApiHost, sensorManagerApiPort)
+	sensorManagerUrl := fmt.Sprintf("http://%s:%d%s", sensorManagerApiHost, sensorManagerApiPort, sensorManagerApiPathPrefix)
 	topicsResponse, err := http.Get(sensorManagerUrl + "/topics")
 	if err != nil {
 		panic(err)
@@ -72,7 +77,7 @@ func main() {
 	)
 
 	if token := mqttClient.Subscribe(firstTopic.Name, 0, func(receiveClient mqtt.Client, message mqtt.Message) {
-		log.Printf("Got message: %s", string(message.Payload()))
+		log.Printf("Got message on topic %s: %s", message.Topic(), string(message.Payload()))
 	}); token.Wait() && token.Error() != nil {
 		log.Println(token.Error())
 		os.Exit(1)
