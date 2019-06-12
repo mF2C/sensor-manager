@@ -1,25 +1,53 @@
 version: "3.5"
 services:
-  mosquitto:
-    image: mf2c/sensor-manager-mosquitto:latest
+  sensor-manager-reverseproxy:
+    image: traefik:v1.7.12-alpine
+    # prevent using containers from other contexts with constraints
+    command: "--docker --docker.watch=true --docker.exposedbydefault=false --constraints=tag==sensor-manager-tag"
+    restart: always
+    networks:
+      - sensor-manager-network
+    depends_on:
+      - sensor-manager-mosquitto
+      - sensor-manager
     ports:
-      - 8080:8080
+      - 58008:80
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+  sensor-manager-mosquitto:
+    image: mf2c/sensor-manager-mosquitto:latest
+    networks:
+      - sensor-manager-network
     environment:
       - "MOSQUITTO_WEBSOCKETS_PORT=8080"
       - "MOSQUITTO_AUTH_HTTP_HOST=sensor-manager"
       - "MOSQUITTO_AUTH_HTTP_PORT=8080"
+    labels:
+      - "traefik.backend=sensor-manager-mosquitto"
+      - "traefik.frontend.rule=PathPrefixStrip:/sensor-manager/stream/"
+      - "traefik.port=8080"
+      - "traefik.docker.network=sensor-manager-network"
+      - "traefik.enable=true"
+      - "traefik.tags=sensor-manager-tag"
+      # websockets need this apparently
+      - "traefik.backend.loadbalancer.stickiness=true"
   sensor-manager:
     image: mf2c/sensor-manager:latest
     depends_on:
-      - mosquitto
-    ports:
-      - 8081:8080
+      - sensor-manager-mosquitto
+    networks:
+      # needed to access CIMI/others (otherwise we'd need to know the host IP to access published ports)
+      - mf2c-external-network
+      - sensor-manager-network
     environment:
-      - "MQTT_HOST=mosquitto"
+      # this gets passed to the sensor drivers (running in the same network context as this container)
+      - "MQTT_HOST=sensor-manager-mosquitto"
       - "MQTT_PORT=8080"
-      - "CIMI_HOST=traefik"
+      # defined in the mf2c docker-compose
+      - "CIMI_HOST=proxy"
       - "CIMI_PORT=443"
-      - "LIFECYCLE_HOST=lifecycle"
+      # defined in the mf2c docker-compose
+      - "LIFECYCLE_HOST=lm-um"
       - "LIFECYCLE_PORT=46000"
       - "HTTP_PORT=8080"
       - "AUTH_DB_FILE=/data/authdb.json"
@@ -28,4 +56,21 @@ services:
       - "APPLICATION_SECRET=thisisaverysecureapplicationsecretplsnocrack"
       - "SENSORS_CHECK_INTERVAL_SECONDS=5"
       - "SENSOR_CONTAINER_MAP_FILE=/data/sensor-container-map.json"
-      - "SENSOR_DRIVER_DOCKER_NETWORK_NAME=mf2c_default"
+      # defined in the mf2c docker-compose (through its containing directory)
+      - "SENSOR_DRIVER_DOCKER_NETWORK_NAME=sensor-manager-network"
+      # same as traefik.frontend.rule in sensor-manager-mosquitto (or empty if no proxy)
+      # this gets passed to the sensor drivers (running in the same network context as this container)
+      - "MQTT_PATH_SUFFIX="
+    labels:
+      - "traefik.backend=sensor-manager"
+      - "traefik.frontend.rule=PathPrefixStrip:/sensor-manager/api/"
+      - "traefik.port=8080"
+      - "traefik.docker.network=sensor-manager-network"
+      - "traefik.enable=true"
+      - "traefik.tags=sensor-manager-tag"
+networks:
+  mf2c-external-network:
+    name: mf2c_default
+    external: true
+  sensor-manager-network:
+    name: sensor-manager-network
