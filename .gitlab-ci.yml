@@ -14,6 +14,7 @@ stages:
   # not referenced from upstream here to make this standalone on github
   - container
   - publish
+  - release
 
 job-compile-x86_64:
   stage: compile
@@ -67,6 +68,7 @@ docker-image-x86_64:
     - docker:stable-dind
   only:
     - /^master$/
+    - tags
   dependencies:
     - job-compile-x86_64
 
@@ -89,6 +91,7 @@ docker-image-armhf:
     - docker:stable-dind
   only:
     - /^master$/
+    - tags
   tags:
     - armv7l
   dependencies:
@@ -103,16 +106,17 @@ publish-crossplatform-gitlab:
     - apk add jq
     - "jq '. + {experimental: \"enabled\"}' ~/.docker/config.json > ~/.docker/config.json.temp"
     - mv ~/.docker/config.json.temp ~/.docker/config.json
-    - .ci/publish-crossplatform-manifest.sh $CI_REGISTRY_IMAGE
-    - .ci/publish-crossplatform-manifest.sh $MOSQUITTO_IMAGE
-    - .ci/publish-crossplatform-manifest.sh $EXAMPLE_DRIVER_IMAGE
-    - .ci/publish-crossplatform-manifest.sh $EXAMPLE_APPLICATION_IMAGE
+    - .ci/publish-crossplatform-manifest.sh $CI_REGISTRY_IMAGE latest
+    - .ci/publish-crossplatform-manifest.sh $MOSQUITTO_IMAGE latest
+    - .ci/publish-crossplatform-manifest.sh $EXAMPLE_DRIVER_IMAGE latest
+    - .ci/publish-crossplatform-manifest.sh $EXAMPLE_APPLICATION_IMAGE latest
   variables:
     DOCKER_HOST: tcp://docker:2375/
   services:
     - docker:stable-dind
   only:
     - /^master$/
+    - tags
 
 publish-crossplatform-dockerhub:
   stage: publish
@@ -124,17 +128,67 @@ publish-crossplatform-dockerhub:
     - apk add jq
     - "jq '. + {experimental: \"enabled\"}' ~/.docker/config.json > ~/.docker/config.json.temp"
     - mv ~/.docker/config.json.temp ~/.docker/config.json
-    - .ci/publish-crossplatform-copy.sh $CI_REGISTRY_IMAGE $DOCKER_HUB_IMAGE
-    - .ci/publish-crossplatform-manifest.sh $DOCKER_HUB_IMAGE
-    - .ci/publish-crossplatform-copy.sh $MOSQUITTO_IMAGE $DOCKER_HUB_IMAGE_MOSQUITTO
-    - .ci/publish-crossplatform-manifest.sh $DOCKER_HUB_IMAGE_MOSQUITTO
-    - .ci/publish-crossplatform-copy.sh $EXAMPLE_DRIVER_IMAGE $DOCKER_HUB_IMAGE_EXAMPLE_DRIVER
-    - .ci/publish-crossplatform-manifest.sh $DOCKER_HUB_IMAGE_EXAMPLE_DRIVER
-    - .ci/publish-crossplatform-copy.sh $EXAMPLE_APPLICATION_IMAGE $DOCKER_HUB_IMAGE_EXAMPLE_APPLICATION
-    - .ci/publish-crossplatform-manifest.sh $DOCKER_HUB_IMAGE_EXAMPLE_APPLICATION
+    - .ci/publish-crossplatform-copy.sh $CI_REGISTRY_IMAGE latest $DOCKER_HUB_IMAGE latest
+    - .ci/publish-crossplatform-manifest.sh $DOCKER_HUB_IMAGE latest
+    - .ci/publish-crossplatform-copy.sh $MOSQUITTO_IMAGE latest $DOCKER_HUB_IMAGE_MOSQUITTO latest
+    - .ci/publish-crossplatform-manifest.sh $DOCKER_HUB_IMAGE_MOSQUITTO latest
+    - .ci/publish-crossplatform-copy.sh $EXAMPLE_DRIVER_IMAGE latest $DOCKER_HUB_IMAGE_EXAMPLE_DRIVER latest
+    - .ci/publish-crossplatform-manifest.sh $DOCKER_HUB_IMAGE_EXAMPLE_DRIVER latest
+    - .ci/publish-crossplatform-copy.sh $EXAMPLE_APPLICATION_IMAGE latest $DOCKER_HUB_IMAGE_EXAMPLE_APPLICATION latest
+    - .ci/publish-crossplatform-manifest.sh $DOCKER_HUB_IMAGE_EXAMPLE_APPLICATION latest
   variables:
     DOCKER_HOST: tcp://docker:2375/
   services:
     - docker:stable-dind
   only:
     - /^master$/
+    - tags
+
+release-gitlab:
+  stage: release
+  image: docker:stable
+  script:
+    - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN $CI_REGISTRY
+    # enable experimental features for the manifest
+    - apk add jq
+    - "jq '. + {experimental: \"enabled\"}' ~/.docker/config.json > ~/.docker/config.json.temp"
+    - mv ~/.docker/config.json.temp ~/.docker/config.json
+    - .ci/publish-crossplatform-copy.sh $CI_REGISTRY_IMAGE latest $CI_REGISTRY_IMAGE $CI_COMMIT_TAG
+    - .ci/publish-crossplatform-manifest.sh $CI_REGISTRY_IMAGE $CI_COMMIT_TAG
+    - .ci/publish-crossplatform-copy.sh $MOSQUITTO_IMAGE latest $MOSQUITTO_IMAGE $CI_COMMIT_TAG
+    - .ci/publish-crossplatform-manifest.sh $MOSQUITTO_IMAGE $CI_COMMIT_TAG
+    - .ci/publish-crossplatform-copy.sh $EXAMPLE_DRIVER_IMAGE latest $EXAMPLE_DRIVER_IMAGE $CI_COMMIT_TAG
+    - .ci/publish-crossplatform-manifest.sh $EXAMPLE_DRIVER_IMAGE $CI_COMMIT_TAG
+    - .ci/publish-crossplatform-copy.sh $EXAMPLE_APPLICATION_IMAGE latest $EXAMPLE_APPLICATION_IMAGE $CI_COMMIT_TAG
+    - .ci/publish-crossplatform-manifest.sh $EXAMPLE_APPLICATION_IMAGE $CI_COMMIT_TAG
+  variables:
+    DOCKER_HOST: tcp://docker:2375/
+  services:
+    - docker:stable-dind
+  only:
+    - tags
+
+release-dockerhub:
+  stage: release
+  image: docker:stable
+  script:
+    - docker login -u $DOCKER_HUB_USERNAME -p $DOCKER_HUB_PASSWORD
+    - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN $CI_REGISTRY
+    # enable experimental features for the manifest
+    - apk add jq
+    - "jq '. + {experimental: \"enabled\"}' ~/.docker/config.json > ~/.docker/config.json.temp"
+    - mv ~/.docker/config.json.temp ~/.docker/config.json
+    - .ci/publish-crossplatform-copy.sh $CI_REGISTRY_IMAGE latest $DOCKER_HUB_IMAGE $CI_COMMIT_TAG
+    - .ci/publish-crossplatform-manifest.sh $DOCKER_HUB_IMAGE $CI_COMMIT_TAG
+    - .ci/publish-crossplatform-copy.sh $MOSQUITTO_IMAGE latest $DOCKER_HUB_IMAGE_MOSQUITTO $CI_COMMIT_TAG
+    - .ci/publish-crossplatform-manifest.sh $DOCKER_HUB_IMAGE_MOSQUITTO $CI_COMMIT_TAG
+    - .ci/publish-crossplatform-copy.sh $EXAMPLE_DRIVER_IMAGE latest $DOCKER_HUB_IMAGE_EXAMPLE_DRIVER $CI_COMMIT_TAG
+    - .ci/publish-crossplatform-manifest.sh $DOCKER_HUB_IMAGE_EXAMPLE_DRIVER $CI_COMMIT_TAG
+    - .ci/publish-crossplatform-copy.sh $EXAMPLE_APPLICATION_IMAGE latest $DOCKER_HUB_IMAGE_EXAMPLE_APPLICATION $CI_COMMIT_TAG
+    - .ci/publish-crossplatform-manifest.sh $DOCKER_HUB_IMAGE_EXAMPLE_APPLICATION $CI_COMMIT_TAG
+  variables:
+    DOCKER_HOST: tcp://docker:2375/
+  services:
+    - docker:stable-dind
+  only:
+    - tags

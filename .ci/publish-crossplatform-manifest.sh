@@ -7,17 +7,23 @@ if [ -z $1 ]; then
     exit 1
 fi
 
+if [ -z $2 ]; then
+    echo "Missing second parameter: no image tag specified."
+    exit 2
+fi
+
 set -e
 set -u
 
 BASE_IMAGE="$1"
+BASE_IMAGE_TAG="$2"
 
-echo "Creating manifest: $BASE_IMAGE:latest = $BASE_IMAGE:latest-x86_64 + $BASE_IMAGE:latest-armhf"
-docker manifest create ${BASE_IMAGE}:latest ${BASE_IMAGE}:latest-x86_64 ${BASE_IMAGE}:latest-armhf
+echo "Creating manifest: $BASE_IMAGE:$BASE_IMAGE_TAG = $BASE_IMAGE:$BASE_IMAGE_TAG-x86_64 + $BASE_IMAGE:$BASE_IMAGE_TAG-armhf"
+docker manifest create ${BASE_IMAGE}:${BASE_IMAGE_TAG} ${BASE_IMAGE}:${BASE_IMAGE_TAG}-x86_64 ${BASE_IMAGE}:${BASE_IMAGE_TAG}-armhf
 echo "    annotating x86_64 manifest"
-docker manifest annotate ${BASE_IMAGE}:latest ${BASE_IMAGE}:latest-x86_64 --arch amd64
+docker manifest annotate ${BASE_IMAGE}:${BASE_IMAGE_TAG} ${BASE_IMAGE}:${BASE_IMAGE_TAG}-x86_64 --arch amd64
 echo "    annotating armhf manifest"
-docker manifest annotate ${BASE_IMAGE}:latest ${BASE_IMAGE}:latest-armhf --arch arm
+docker manifest annotate ${BASE_IMAGE}:${BASE_IMAGE_TAG} ${BASE_IMAGE}:${BASE_IMAGE_TAG}-armhf --arch arm
 echo "    pushing manifest"
-docker manifest push ${BASE_IMAGE}:latest
+docker manifest push ${BASE_IMAGE}:${BASE_IMAGE_TAG}
 echo "    done!"
