@@ -103,26 +103,10 @@ publish-crossplatform-gitlab:
     - apk add jq
     - "jq '. + {experimental: \"enabled\"}' ~/.docker/config.json > ~/.docker/config.json.temp"
     - mv ~/.docker/config.json.temp ~/.docker/config.json
-    # create a list (manifest) of all images
-    - docker manifest create $CI_REGISTRY_IMAGE:latest $CI_REGISTRY_IMAGE:latest-x86_64 $CI_REGISTRY_IMAGE:latest-armhf
-    - docker manifest annotate $CI_REGISTRY_IMAGE:latest $CI_REGISTRY_IMAGE:latest-x86_64 --arch amd64
-    - docker manifest annotate $CI_REGISTRY_IMAGE:latest $CI_REGISTRY_IMAGE:latest-armhf --arch arm
-    - docker manifest push $CI_REGISTRY_IMAGE:latest
-    # repeat for mosquitto
-    - docker manifest create $MOSQUITTO_IMAGE:latest $MOSQUITTO_IMAGE:latest-x86_64 $MOSQUITTO_IMAGE:latest-armhf
-    - docker manifest annotate $MOSQUITTO_IMAGE:latest $MOSQUITTO_IMAGE:latest-x86_64 --arch amd64
-    - docker manifest annotate $MOSQUITTO_IMAGE:latest $MOSQUITTO_IMAGE:latest-armhf --arch arm
-    - docker manifest push $MOSQUITTO_IMAGE:latest
-    # repeat for the example driver
-    - docker manifest create $EXAMPLE_DRIVER_IMAGE:latest $EXAMPLE_DRIVER_IMAGE:latest-x86_64 $EXAMPLE_DRIVER_IMAGE:latest-armhf
-    - docker manifest annotate $EXAMPLE_DRIVER_IMAGE:latest $EXAMPLE_DRIVER_IMAGE:latest-x86_64 --arch amd64
-    - docker manifest annotate $EXAMPLE_DRIVER_IMAGE:latest $EXAMPLE_DRIVER_IMAGE:latest-armhf --arch arm
-    - docker manifest push $EXAMPLE_DRIVER_IMAGE:latest
-    # repeat for the example application
-    - docker manifest create $EXAMPLE_APPLICATION_IMAGE:latest $EXAMPLE_APPLICATION_IMAGE:latest-x86_64 $EXAMPLE_APPLICATION_IMAGE:latest-armhf
-    - docker manifest annotate $EXAMPLE_APPLICATION_IMAGE:latest $EXAMPLE_APPLICATION_IMAGE:latest-x86_64 --arch amd64
-    - docker manifest annotate $EXAMPLE_APPLICATION_IMAGE:latest $EXAMPLE_APPLICATION_IMAGE:latest-armhf --arch arm
-    - docker manifest push $EXAMPLE_APPLICATION_IMAGE:latest
+    - .ci/publish-crossplatform-manifest.sh $CI_REGISTRY_IMAGE
+    - .ci/publish-crossplatform-manifest.sh $MOSQUITTO_IMAGE
+    - .ci/publish-crossplatform-manifest.sh $EXAMPLE_DRIVER_IMAGE
+    - .ci/publish-crossplatform-manifest.sh $EXAMPLE_APPLICATION_IMAGE
   variables:
     DOCKER_HOST: tcp://docker:2375/
   services:
@@ -140,50 +124,14 @@ publish-crossplatform-dockerhub:
     - apk add jq
     - "jq '. + {experimental: \"enabled\"}' ~/.docker/config.json > ~/.docker/config.json.temp"
     - mv ~/.docker/config.json.temp ~/.docker/config.json
-    # pull, tag local, push and create a list (manifest) of all images
-    - docker pull $CI_REGISTRY_IMAGE:latest-x86_64
-    - docker pull $CI_REGISTRY_IMAGE:latest-armhf
-    - docker tag $CI_REGISTRY_IMAGE:latest-x86_64 $DOCKER_HUB_IMAGE:latest-x86_64
-    - docker tag $CI_REGISTRY_IMAGE:latest-armhf $DOCKER_HUB_IMAGE:latest-armhf
-    - docker push $DOCKER_HUB_IMAGE:latest-x86_64
-    - docker push $DOCKER_HUB_IMAGE:latest-armhf
-    - docker manifest create $DOCKER_HUB_IMAGE:latest $DOCKER_HUB_IMAGE:latest-x86_64 $DOCKER_HUB_IMAGE:latest-armhf
-    - docker manifest annotate $DOCKER_HUB_IMAGE:latest $DOCKER_HUB_IMAGE:latest-x86_64 --arch amd64
-    - docker manifest annotate $DOCKER_HUB_IMAGE:latest $DOCKER_HUB_IMAGE:latest-armhf --arch arm
-    - docker manifest push $DOCKER_HUB_IMAGE:latest
-    # repeat for mosquitto
-    - docker pull $MOSQUITTO_IMAGE:latest-x86_64
-    - docker pull $MOSQUITTO_IMAGE:latest-armhf
-    - docker tag $MOSQUITTO_IMAGE:latest-x86_64 $DOCKER_HUB_IMAGE_MOSQUITTO:latest-x86_64
-    - docker tag $MOSQUITTO_IMAGE:latest-armhf $DOCKER_HUB_IMAGE_MOSQUITTO:latest-armhf
-    - docker push $DOCKER_HUB_IMAGE_MOSQUITTO:latest-x86_64
-    - docker push $DOCKER_HUB_IMAGE_MOSQUITTO:latest-armhf
-    - docker manifest create $DOCKER_HUB_IMAGE_MOSQUITTO:latest $DOCKER_HUB_IMAGE_MOSQUITTO:latest-x86_64 $DOCKER_HUB_IMAGE_MOSQUITTO:latest-armhf
-    - docker manifest annotate $DOCKER_HUB_IMAGE_MOSQUITTO:latest $DOCKER_HUB_IMAGE_MOSQUITTO:latest-x86_64 --arch amd64
-    - docker manifest annotate $DOCKER_HUB_IMAGE_MOSQUITTO:latest $DOCKER_HUB_IMAGE_MOSQUITTO:latest-armhf --arch arm
-    - docker manifest push $DOCKER_HUB_IMAGE_MOSQUITTO:latest
-    # repeat for the example driver
-    - docker pull $EXAMPLE_DRIVER_IMAGE:latest-x86_64
-    - docker pull $EXAMPLE_DRIVER_IMAGE:latest-armhf
-    - docker tag $EXAMPLE_DRIVER_IMAGE:latest-x86_64 $DOCKER_HUB_IMAGE_EXAMPLE_DRIVER:latest-x86_64
-    - docker tag $EXAMPLE_DRIVER_IMAGE:latest-armhf $DOCKER_HUB_IMAGE_EXAMPLE_DRIVER:latest-armhf
-    - docker push $DOCKER_HUB_IMAGE_EXAMPLE_DRIVER:latest-x86_64
-    - docker push $DOCKER_HUB_IMAGE_EXAMPLE_DRIVER:latest-armhf
-    - docker manifest create $DOCKER_HUB_IMAGE_EXAMPLE_DRIVER:latest $DOCKER_HUB_IMAGE_EXAMPLE_DRIVER:latest-x86_64 $DOCKER_HUB_IMAGE_EXAMPLE_DRIVER:latest-armhf
-    - docker manifest annotate $DOCKER_HUB_IMAGE_EXAMPLE_DRIVER:latest $DOCKER_HUB_IMAGE_EXAMPLE_DRIVER:latest-x86_64 --arch amd64
-    - docker manifest annotate $DOCKER_HUB_IMAGE_EXAMPLE_DRIVER:latest $DOCKER_HUB_IMAGE_EXAMPLE_DRIVER:latest-armhf --arch arm
-    - docker manifest push $DOCKER_HUB_IMAGE_EXAMPLE_DRIVER:latest
-    # repeat for the example application
-    - docker pull $EXAMPLE_APPLICATION_IMAGE:latest-x86_64
-    - docker pull $EXAMPLE_APPLICATION_IMAGE:latest-armhf
-    - docker tag $EXAMPLE_APPLICATION_IMAGE:latest-x86_64 $DOCKER_HUB_IMAGE_EXAMPLE_APPLICATION:latest-x86_64
-    - docker tag $EXAMPLE_APPLICATION_IMAGE:latest-armhf $DOCKER_HUB_IMAGE_EXAMPLE_APPLICATION:latest-armhf
-    - docker push $DOCKER_HUB_IMAGE_EXAMPLE_APPLICATION:latest-x86_64
-    - docker push $DOCKER_HUB_IMAGE_EXAMPLE_APPLICATION:latest-armhf
-    - docker manifest create $DOCKER_HUB_IMAGE_EXAMPLE_APPLICATION:latest $DOCKER_HUB_IMAGE_EXAMPLE_APPLICATION:latest-x86_64 $DOCKER_HUB_IMAGE_EXAMPLE_APPLICATION:latest-armhf
-    - docker manifest annotate $DOCKER_HUB_IMAGE_EXAMPLE_APPLICATION:latest $DOCKER_HUB_IMAGE_EXAMPLE_APPLICATION:latest-x86_64 --arch amd64
-    - docker manifest annotate $DOCKER_HUB_IMAGE_EXAMPLE_APPLICATION:latest $DOCKER_HUB_IMAGE_EXAMPLE_APPLICATION:latest-armhf --arch arm
-    - docker manifest push $DOCKER_HUB_IMAGE_EXAMPLE_APPLICATION:latest
+    - .ci/publish-crossplatform-copy.sh $CI_REGISTRY_IMAGE $DOCKER_HUB_IMAGE
+    - .ci/publish-crossplatform-manifest.sh $DOCKER_HUB_IMAGE
+    - .ci/publish-crossplatform-copy.sh $MOSQUITTO_IMAGE $DOCKER_HUB_IMAGE_MOSQUITTO
+    - .ci/publish-crossplatform-manifest.sh $DOCKER_HUB_IMAGE_MOSQUITTO
+    - .ci/publish-crossplatform-copy.sh $EXAMPLE_DRIVER_IMAGE $DOCKER_HUB_IMAGE_EXAMPLE_DRIVER
+    - .ci/publish-crossplatform-manifest.sh $DOCKER_HUB_IMAGE_EXAMPLE_DRIVER
+    - .ci/publish-crossplatform-copy.sh $EXAMPLE_APPLICATION_IMAGE $DOCKER_HUB_IMAGE_EXAMPLE_APPLICATION
+    - .ci/publish-crossplatform-manifest.sh $DOCKER_HUB_IMAGE_EXAMPLE_APPLICATION
   variables:
     DOCKER_HOST: tcp://docker:2375/
   services:
