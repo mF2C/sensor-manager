@@ -54,6 +54,10 @@ docker-image-x86_64:
   image: docker:stable
   script:
     - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN $CI_REGISTRY
+    - docker pull $CI_REGISTRY_IMAGE:latest-x86_64
+    - docker pull $MOSQUITTO_IMAGE:latest-x86_64
+    - docker pull $EXAMPLE_DRIVER_IMAGE:latest-x86_64
+    - docker pull $EXAMPLE_APPLICATION_IMAGE:latest-x86_64
     - docker build -t $CI_REGISTRY_IMAGE:latest-x86_64 --cache-from $CI_REGISTRY_IMAGE:latest-x86_64 -f Dockerfile-sensor-manager .
     - docker build -t $MOSQUITTO_IMAGE:latest-x86_64 --cache-from $MOSQUITTO_IMAGE:latest-x86_64 -f Dockerfile-mqtt-auth .
     - docker build -t $EXAMPLE_DRIVER_IMAGE:latest-x86_64 --cache-from $EXAMPLE_DRIVER_IMAGE:latest-x86_64 -f Dockerfile-example-driver .
@@ -77,6 +81,10 @@ docker-image-armhf:
   image: docker:stable
   script:
     - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN $CI_REGISTRY
+    - docker pull $CI_REGISTRY_IMAGE:latest-armhf
+    - docker pull $MOSQUITTO_IMAGE:latest-armhf
+    - docker pull $EXAMPLE_DRIVER_IMAGE:latest-armhf
+    - docker pull $EXAMPLE_APPLICATION_IMAGE:latest-armhf
     - docker build -t $CI_REGISTRY_IMAGE:latest-armhf --cache-from $CI_REGISTRY_IMAGE:latest-armhf -f Dockerfile-sensor-manager .
     - docker build -t $MOSQUITTO_IMAGE:latest-armhf --cache-from $MOSQUITTO_IMAGE:latest-armhf -f Dockerfile-mqtt-auth .
     - docker build -t $EXAMPLE_DRIVER_IMAGE:latest-armhf --cache-from $EXAMPLE_DRIVER_IMAGE:latest-armhf -f Dockerfile-example-driver .
